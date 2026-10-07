@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BRAILLE_DOTS } from '@/lib/braille'
+import { BRAILLE_DOTS } from '@/lib/a11y/braille'
 
 // Right-hand panel on the sign-in and register screens. It mirrors whatever has
 // focus in the form the way NVDA would: a speech line, plus the same words on a

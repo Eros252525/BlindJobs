@@ -197,7 +197,7 @@
 
 /* ─── role switch on login ───
    Toggle buttons (aria-pressed), not radios: native radios capture the arrow keys,
-   which would trap the spatial navigator in universal-remote.ts. */
+   which would trap the spatial navigator in lib/a11y/arrow-navigation.ts. */
 .role-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;

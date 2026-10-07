@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import * as sr from '@/lib/sr'
+import * as sr from '@/lib/a11y/screen-reader'
 import { SCREEN_LABELS } from '@/constants'
 import type { Screen } from '@/types'
 

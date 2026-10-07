@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import * as sr from '@/lib/sr'
+import * as sr from '@/lib/a11y/screen-reader'
 import { setToastListener, type Toast } from '@/lib/toast'
 
 // Toasts stay until dismissed (WCAG 2.2.1 Timing Adjustable: no time limit on

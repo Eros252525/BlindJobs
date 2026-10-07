@@ -80,7 +80,7 @@ function describeElement(el: HTMLElement): string {
 }
 
 function onFocus(e: FocusEvent) {
-  // Skip if universal-remote already spoke this focus event
+  // Skip if arrow-navigation already spoke this focus event
   if (window.__remoteNavFocusing) return
   const el = e.target as HTMLElement
   if (!el || el.tagName === 'BODY' || el.tagName === 'HTML') return

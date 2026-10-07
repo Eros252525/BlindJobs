@@ -1,4 +1,4 @@
-import { BRAILLE_DOTS } from '@/lib/braille'
+import { BRAILLE_DOTS } from '@/lib/a11y/braille'
 
 const CELL_ADVANCE = 6.5, DOT_GAP = 2.5, DOT_R = 0.95
 

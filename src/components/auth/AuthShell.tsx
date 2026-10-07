@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BrailleText } from '@/components/BrailleText'
+import { BrailleText } from '@/components/a11y/BrailleText'
 import { AuthShowcase } from './AuthShowcase'
 
 // Full-screen frame for the signed-out screens: branded backdrop, logo lockup, card.
