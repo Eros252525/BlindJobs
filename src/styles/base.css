@@ -1,0 +1,41 @@
+/* Keep arrow-key/Tab focus targets from scrolling under the sticky navbar (top) and
+   the fixed Screen Reader button (bottom) — WCAG 2.4.11 Focus Not Obscured. */
+html {
+  scroll-padding-top: 88px;
+  scroll-padding-bottom: 6rem;
+}
+
+/* Global keyboard focus ring. Two tones so it passes 3:1 (WCAG 1.4.11) on any
+   surface: the green-700 outline reads on white (5.0:1), the white band inside it
+   reads on the brand blue and dark buttons. The old #22c55e was 2.3:1 on white. */
+:focus-visible {
+  outline: 3px solid #15803d !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 2px #fff;
+  border-radius: 5px;
+  transition: outline-offset 80ms ease, outline-color 80ms ease;
+}
+/* Headings receive focus programmatically after a screen change; they aren't
+   controls, so they don't get a control's focus ring. */
+h1[tabindex='-1']:focus,
+main[tabindex='-1']:focus {
+  outline: none !important;
+  box-shadow: none;
+}
+
+/* Skip link (WCAG 2.4.1): off-screen until focused, then pinned top-left above the navbar */
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 200;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #1a4fa0;
+  color: #fff;
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}

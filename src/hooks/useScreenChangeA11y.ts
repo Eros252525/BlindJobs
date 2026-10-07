@@ -1,0 +1,30 @@
+import { useEffect } from 'react'
+import * as sr from '@/lib/sr'
+import { SCREEN_LABELS } from '@/constants'
+import type { Screen } from '@/types'
+
+// Runs on every screen change: sets the tab title (WCAG 2.4.2), announces the
+// screen through the built-in reader, and recovers focus lost by the swap.
+export function useScreenChangeA11y(screen: Screen) {
+  useEffect(() => {
+    const label = SCREEN_LABELS[screen]
+    document.title = label ? `${label.replace(/\.$/, '')} — Blind Jobs` : 'Blind Jobs'
+
+    // Swapping screens unmounts whatever had focus (e.g. the Sign in button), which
+    // drops focus to <body> and leaves NVDA silent. Only then, land on the new
+    // screen's heading; focus the user still has (navbar link, autofocus) is left alone.
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement
+      if (active && active !== document.body) return
+      const heading = document.querySelector<HTMLElement>('h1')
+      if (!heading) return
+      heading.tabIndex = -1
+      window.__remoteNavFocusing = true // the announce below already says where we are
+      heading.focus({ preventScroll: true })
+      window.__remoteNavFocusing = false
+    })
+
+    if (label) sr.announce(label)
+    return () => cancelAnimationFrame(frame)
+  }, [screen])
+}

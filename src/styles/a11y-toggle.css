@@ -1,0 +1,61 @@
+/* ═══ Screen Reader toggle (fixed, every screen) ═══
+   OFF = plain grey (white text 4.8:1); ON = light green with a glow (dark-green
+   text 8.6:1), so the state reads at a glance and at low acuity. The words
+   ON/OFF and the speaker icon carry it too, so colour is never the only cue.
+   52px tall; the white ring keeps the edge visible on the blue backdrop. */
+.a11y-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 3.25rem;
+  padding: 0.5rem 1.1rem 0.5rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: #6b7280;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.9), 0 8px 20px -6px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+  transition: background-color 200ms ease, color 200ms ease, box-shadow 250ms ease;
+}
+.a11y-toggle:hover { background: #4b5563; }
+
+.a11y-toggle.is-on {
+  color: #052e16;
+  background: #4ade80;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 5px rgb(74 222 128 / 0.45),
+    0 0 24px 6px rgb(74 222 128 / 0.55);
+}
+.a11y-toggle.is-on:hover { background: #22c55e; }
+
+/* status light: hollow when off, solid and glowing when on (shape differs, not just colour) */
+.a11y-led {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 0.85);
+  background: transparent;
+}
+.a11y-toggle.is-on .a11y-led {
+  border-color: #052e16;
+  background: #052e16;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6);
+}
+
+.a11y-toggle-key {
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 0.18);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+.a11y-toggle.is-on .a11y-toggle-key {
+  background: rgb(5 46 22 / 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .a11y-toggle { transition: none; }
+}

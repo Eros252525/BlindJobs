@@ -1,0 +1,498 @@
+/* ═══ auth shell (intro, login, register) ═════════════════════════════════════
+   The backdrop is drawn from the logo's vocabulary rather than the bitmap itself,
+   back to front:
+   1. brand-blue field (#0055a5, sampled from the logo), lit from the top  (.auth-shell)
+   2. braille cells spelling "jobs", fading in toward the edges  (.has-braille::before)
+   3. oversized rising-arrow mark bleeding off the bottom-left              (.auth-motif)
+   4. vignette that settles the corners                                     (::after)
+   All decoration is aria-hidden / pseudo-content; nothing here is announced.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.auth-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  /* bottom room keeps the fixed Screen Reader button (52px + 16px inset) clear of the card */
+  padding: 1.5rem 1rem 5rem;
+  background:
+    radial-gradient(90% 60% at 50% -10%, rgb(255 255 255 / 0.16), transparent 70%),
+    radial-gradient(120% 100% at 50% 0%, var(--auth-blue-lit) 0%, var(--auth-blue) 45%, var(--auth-blue-deep) 100%);
+}
+
+/* Braille "jobs" (j=2,4,5 · o=1,3,5 · b=1,2 · s=2,3,4), one word per 84×30 tile.
+   Masked out behind the card so it frames the content instead of competing with it. */
+.auth-shell.has-braille::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='30' fill='white'%3E%3Ccircle cx='4' cy='13' r='1.8'/%3E%3Ccircle cx='11' cy='6' r='1.8'/%3E%3Ccircle cx='11' cy='13' r='1.8'/%3E%3Ccircle cx='22' cy='6' r='1.8'/%3E%3Ccircle cx='22' cy='20' r='1.8'/%3E%3Ccircle cx='29' cy='13' r='1.8'/%3E%3Ccircle cx='40' cy='6' r='1.8'/%3E%3Ccircle cx='40' cy='13' r='1.8'/%3E%3Ccircle cx='58' cy='13' r='1.8'/%3E%3Ccircle cx='58' cy='20' r='1.8'/%3E%3Ccircle cx='65' cy='6' r='1.8'/%3E%3C/svg%3E");
+  background-size: 84px 30px;
+  opacity: 0.14;
+  -webkit-mask-image: radial-gradient(ellipse 55% 50% at 50% 50%, transparent 35%, #000 100%);
+  mask-image: radial-gradient(ellipse 55% 50% at 50% 50%, transparent 35%, #000 100%);
+}
+
+.auth-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(140% 100% at 50% 40%, transparent 55%, rgb(0 20 50 / 0.45) 100%);
+}
+
+.auth-motif {
+  position: absolute;
+  z-index: -1;
+  left: -6%;
+  bottom: -8%;
+  width: min(70vw, 760px);
+  height: auto;
+  color: #fff;
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+/* ─── brand lockup above the card ─── */
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #fff;
+}
+.auth-brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.25),
+    0 8px 20px -6px rgb(0 20 50 / 0.6);
+}
+.auth-brand-name {
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgb(0 20 50 / 0.35);
+}
+.auth-brand-name span {
+  font-weight: 400;
+}
+
+/* ─── card ─── */
+.auth-card {
+  @apply bg-white rounded-2xl w-full;
+  padding: 2rem;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.6) inset,
+    0 2px 4px rgb(0 20 50 / 0.08),
+    0 24px 60px -16px rgb(0 20 50 / 0.55);
+  animation: auth-rise 420ms var(--nav-ease-out) both;
+}
+@media (max-width: 480px) {
+  .auth-card { padding: 1.5rem 1.25rem; }
+}
+
+/* Large type and 48px controls on the public screens. Scoped to the card so the
+   shared .input / .btn-primary keep their size inside the portals. */
+.auth-card {
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+.auth-card .input {
+  min-height: 3rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 1.125rem;
+}
+.auth-card .btn-primary {
+  min-height: 3.25rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.125rem;
+}
+.auth-card .field-label {
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+.auth-link {
+  min-height: 2.75rem;
+  padding: 0 0.25rem;
+  font-weight: 600;
+  color: var(--nav-brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.auth-link:hover {
+  color: #1558a8;
+  text-decoration-thickness: 2px;
+}
+
+/* braille name under the wordmark (decorative, aria-hidden) */
+.auth-brand-braille {
+  height: 0.8rem;
+  width: auto;
+  color: rgb(255 255 255 / 0.85);
+}
+
+.auth-eyebrow {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--nav-brand-2);
+}
+
+/* ─── shortcut list on the guide ─── */
+.shortcut-row {
+  display: grid;
+  grid-template-columns: 11.5rem 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid rgb(226 232 240);
+}
+.shortcut-row:first-child {
+  border-top: 0;
+}
+@media (max-width: 480px) {
+  .shortcut-row { grid-template-columns: 1fr; gap: 0.4rem; }
+}
+
+/* Navigation guide layout: one column on small screens, two side by side from
+   1024px so the full guide is visible at once. */
+.guide-continue {
+  margin-top: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .guide-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 3rem;
+  }
+  .guide-side {
+    display: flex;
+    flex-direction: column;
+  }
+  /* pin Continue to the bottom of the shorter column */
+  .guide-continue {
+    margin-top: auto;
+    padding-top: 1.5rem;
+  }
+  .guide-grid .shortcut-row {
+    padding: 0.4rem 0;
+    line-height: 1.4;
+  }
+  /* key badges a touch shorter in the two-column layout (text size unchanged) */
+  .guide-grid kbd {
+    height: 2.25rem;
+  }
+}
+
+/* ─── role switch on login ───
+   Toggle buttons (aria-pressed), not radios: native radios capture the arrow keys,
+   which would trap the spatial navigator in universal-remote.ts. */
+.role-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 0.75rem;
+  background: rgb(241 245 249);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.08);
+}
+.role-switch button {
+  min-height: 3rem;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid transparent;
+  border-radius: 0.55rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: rgb(51 65 85);
+  cursor: pointer;
+  transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+}
+.role-switch button:hover:not([aria-pressed='true']) {
+  color: var(--nav-brand);
+}
+/* the border carries the selected state at 3:1+ (white-on-slate alone is ~1.1:1) */
+.role-switch button[aria-pressed='true'] {
+  border-color: var(--nav-brand);
+  background: #fff;
+  color: var(--nav-brand);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08), 0 4px 10px -4px rgb(26 79 160 / 0.35);
+}
+
+/* ─── portal backdrop (applicant + employer screens) ───
+   Same field, braille "jobs" tiles and rising-arrow mark as the auth shell, so the
+   signed-in screens match the first page. Darker than the auth shell (no white
+   highlight at the top) because headings and hints sit directly on it: white text
+   stays at 7:1 or better everywhere. Layers are fixed so long pages scroll over them. */
+.portal-backdrop {
+  position: relative;
+  isolation: isolate;
+  background: radial-gradient(120% 100% at 50% 0%, var(--auth-blue) 0%, var(--auth-blue-deep) 100%) fixed;
+}
+.portal-backdrop::before,
+.portal-backdrop::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+.portal-backdrop::before {
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='30' fill='white'%3E%3Ccircle cx='4' cy='13' r='1.8'/%3E%3Ccircle cx='11' cy='6' r='1.8'/%3E%3Ccircle cx='11' cy='13' r='1.8'/%3E%3Ccircle cx='22' cy='6' r='1.8'/%3E%3Ccircle cx='22' cy='20' r='1.8'/%3E%3Ccircle cx='29' cy='13' r='1.8'/%3E%3Ccircle cx='40' cy='6' r='1.8'/%3E%3Ccircle cx='40' cy='13' r='1.8'/%3E%3Ccircle cx='58' cy='13' r='1.8'/%3E%3Ccircle cx='58' cy='20' r='1.8'/%3E%3Ccircle cx='65' cy='6' r='1.8'/%3E%3C/svg%3E");
+  background-size: 84px 30px;
+  opacity: 0.1;
+}
+.portal-backdrop::after {
+  left: -6%;
+  bottom: -8%;
+  width: min(70vw, 760px);
+  aspect-ratio: 600 / 420;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 420' fill='none'%3E%3Cpath d='M-20 420 L190 210 L280 300 L485 95' stroke='white' stroke-width='56' stroke-linejoin='miter'/%3E%3Cpath d='M570 10 L435 45 L535 145 Z' fill='white'/%3E%3C/svg%3E") no-repeat center / contain;
+  opacity: 0.07;
+}
+
+/* ─── split layout: form left, screen-reader / braille showcase right ───
+   Below 1024px the showcase is hidden and the form stays centred as before. */
+.auth-shell.is-split {
+  /* clip, not hidden: `hidden` makes the shell a scroll container and breaks the sticky panel */
+  overflow: clip;
+}
+.auth-split {
+  width: 100%;
+  max-width: 72rem;
+  display: grid;
+  gap: 3rem;
+  align-items: start;
+  justify-items: center;
+}
+.auth-split-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.auth-showcase {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .auth-split {
+    grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+    justify-items: stretch;
+  }
+  .auth-split-form {
+    align-items: flex-start;
+  }
+  .auth-showcase {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: sticky;
+    top: 2rem;
+    /* line the panel up with the card, below the brand lockup */
+    margin-top: 3.75rem;
+    color: #fff;
+    animation: auth-rise 520ms 80ms var(--nav-ease-out) both;
+  }
+}
+
+.auth-showcase-eyebrow {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(191 219 254);
+}
+.auth-showcase-title {
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 12px rgb(0 20 50 / 0.35);
+}
+
+/* the live "speech viewer + braille display" device */
+.sr-panel {
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  background: linear-gradient(160deg, rgb(10 30 62 / 0.92), rgb(6 20 44 / 0.96));
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.12) inset,
+    0 24px 60px -16px rgb(0 10 30 / 0.7);
+}
+.sr-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+}
+.sr-panel-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(191 219 254);
+}
+.sr-panel-label::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+}
+.sr-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 1.25rem;
+}
+.sr-wave i {
+  display: block;
+  width: 3px;
+  height: 30%;
+  border-radius: 2px;
+  background: rgb(147 197 253);
+  animation: sr-wave 900ms ease-out both;
+}
+.sr-wave i:nth-child(2) { animation-delay: 80ms; }
+.sr-wave i:nth-child(3) { animation-delay: 160ms; }
+.sr-wave i:nth-child(4) { animation-delay: 240ms; }
+.sr-wave i:nth-child(5) { animation-delay: 320ms; }
+@keyframes sr-wave {
+  0%, 100% { height: 30%; }
+  30% { height: 100%; }
+  60% { height: 50%; }
+}
+
+.sr-log {
+  min-height: 9.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  padding: 0.9rem 0 1rem;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+.sr-log li {
+  color: rgb(255 255 255 / 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-log li.is-current {
+  color: #fff;
+  font-weight: 600;
+  animation: sr-line-in 260ms var(--nav-ease-out) both;
+}
+.sr-log li.is-current::after {
+  content: '';
+  display: inline-block;
+  width: 0.55rem;
+  height: 1.1em;
+  margin-left: 0.3rem;
+  vertical-align: -0.2em;
+  background: rgb(147 197 253);
+  /* blinks 4 times and stops: under 5s, so no pause control needed (WCAG 2.2.2) */
+  animation: sr-caret 1s steps(1) 4;
+}
+@keyframes sr-line-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sr-caret {
+  50% { opacity: 0; }
+}
+
+/* 12-cell refreshable braille display: dots 1-2-3 down the left, 4-5-6 down the right */
+.bd {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.85rem 0.6rem 0.6rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(#1e293b, #0f172a);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.08) inset,
+    0 -2px 0 rgb(0 0 0 / 0.4) inset;
+}
+.bd-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+.bd-dots {
+  display: grid;
+  grid-template-columns: repeat(2, 0.55rem);
+  grid-template-rows: repeat(3, 0.55rem);
+  grid-auto-flow: column;
+  gap: 0.3rem;
+}
+.bd-dot {
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.1);
+  transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.bd-dot.is-up {
+  background: #fff;
+  box-shadow: 0 0 8px rgb(147 197 253 / 0.9);
+  transform: scale(1.12);
+}
+.bd-letter {
+  height: 1rem;
+  font: 600 0.8125rem/1rem ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.7);
+}
+.bd-foot {
+  margin-top: 0.6rem;
+  font-size: 0.8125rem;
+  color: rgb(255 255 255 / 0.65);
+  text-align: right;
+}
+
+.auth-showcase-points {
+  display: grid;
+  gap: 0.6rem;
+  font-size: 1.0625rem;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.92);
+}
+.auth-showcase-points li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+.auth-showcase-points li span {
+  flex: none;
+  width: 1.5rem;
+  text-align: center;
+  color: rgb(191 219 254);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card { animation: none; }
+  .role-switch button { transition: none; }
+  .auth-showcase,
+  .sr-wave i,
+  .sr-log li.is-current,
+  .sr-log li.is-current::after { animation: none; }
+  .bd-dot { transition: none; }
+}

@@ -1,0 +1,85 @@
+/* ═══ Readability floor for partially and legally blind users ═════════════════
+   Applies to every signed-in screen (main content, navbar and its menus). The
+   screens were laid out with dense dashboard sizing (9–12px labels, light-grey
+   secondary text, one-line truncation); this file lifts all of it to a floor
+   that stays readable at low acuity, without touching each component:
+   - no text below 13px; body copy 16px, small print 15px
+   - secondary text darkened to gray-700 (10.3:1 on white) instead of gray-500/600
+   - nothing cut off with "…": text wraps so the whole word is always there
+   - looser line height so lines don't blur together
+   Unlayered, so it wins over Tailwind's utility layer without !important.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── sizes ─── */
+:is(#main-content, .app-nav) :is(.text-\[9px\], .text-\[10px\], .text-\[11px\]) {
+  font-size: 0.875rem;      /* 14px */
+  line-height: 1.35;
+}
+:is(#main-content, .app-nav) .text-xs {
+  font-size: 0.9375rem;     /* 15px */
+  line-height: 1.45;
+}
+:is(#main-content, .app-nav) .text-sm {
+  font-size: 1rem;          /* 16px */
+  line-height: 1.5;
+}
+:is(#main-content, .app-nav) .text-base {
+  font-size: 1.0625rem;     /* 17px */
+  line-height: 1.55;
+}
+#main-content .field-label {
+  font-size: 1rem;
+}
+#main-content .input {
+  font-size: 1rem;
+}
+
+/* small uppercase labels: less tracking, so letters don't drift apart */
+:is(#main-content, .app-nav) .uppercase {
+  letter-spacing: 0.04em;
+}
+
+/* ─── colour: secondary text darker, never pale grey ─── */
+:is(#main-content, .app-nav) :is(.text-gray-400, .text-gray-500, .text-gray-600) {
+  color: #374151;           /* gray-700, 10.3:1 on white */
+}
+:is(#main-content, .app-nav) .text-gray-700 {
+  color: #1f2937;           /* gray-800, 14.7:1 */
+}
+#main-content ::placeholder {
+  color: #4b5563;           /* 7.6:1 */
+  opacity: 1;
+}
+/* skill choices that are full: still readable, shown as unavailable by a dashed edge */
+#main-content .text-gray-300 {
+  color: #4b5563;
+  border-style: dashed;
+  border-color: #6b7280;
+}
+/* time stamps inside your own (green) chat bubbles */
+#main-content .text-green-100 {
+  color: #fff;
+}
+
+/* ─── no truncation: wrap instead of hiding the end of a word ─── */
+#main-content .truncate,
+.app-nav .nav-dropdown .truncate {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+/* ─── navbar ─── */
+.app-nav :is(.nav-link, .nav-menu-item, .nav-mobile-link) {
+  font-size: 1rem;
+}
+.app-nav .nav-avatar {
+  font-size: 0.875rem;
+}
+/* unread count on the bell */
+.app-nav .nav-bell .bg-red-700 {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.75rem;
+}

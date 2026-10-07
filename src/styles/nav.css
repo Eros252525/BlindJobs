@@ -1,0 +1,314 @@
+/* ═══ navbar ══════════════════════════════════════════════════════════════════
+   Depth is built from layers, back to front:
+   1. frosted surface + hairline highlight   (.app-nav)
+   2. elevation shadow that grows on scroll  (.app-nav.is-scrolled)
+   3. recessed track holding the links       (.nav-track)
+   4. raised pill sliding under active link  (.nav-indicator)
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.app-nav {
+  padding-block: 0.75rem;
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.82));
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid rgb(15 23 42 / 0.06);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 2px rgb(15 23 42 / 0.04);
+  transition: padding 300ms var(--nav-ease-out), box-shadow 300ms var(--nav-ease-out), background 300ms ease;
+}
+.app-nav.is-scrolled {
+  padding-block: 0.4rem;
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0.88), rgb(248 250 255 / 0.76));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 0 rgb(26 79 160 / 0.06),
+    0 10px 30px -12px rgb(26 79 160 / 0.28),
+    0 4px 10px -4px rgb(15 23 42 / 0.08);
+}
+
+/* animated gradient stripe along the top edge */
+.app-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--nav-brand), var(--nav-accent), var(--nav-brand-2), var(--nav-brand));
+  background-size: 300% 100%;
+  /* plays once, under 5s (WCAG 2.2.2 Pause, Stop, Hide) */
+  animation: nav-stripe 4.5s linear 1;
+}
+@keyframes nav-stripe {
+  to { background-position: 300% 0; }
+}
+
+/* ─── link track + sliding indicator ─── */
+.nav-track {
+  position: relative;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 9999px;
+  background: rgb(241 245 249 / 0.8);
+  box-shadow:
+    inset 0 1px 2px rgb(15 23 42 / 0.08),
+    inset 0 -1px 0 rgb(255 255 255 / 0.7);
+}
+.nav-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, var(--nav-brand-2), var(--nav-brand));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.25),
+    0 1px 2px rgb(26 79 160 / 0.3),
+    0 6px 16px -4px rgb(26 79 160 / 0.45);
+  transition: transform 420ms var(--nav-ease-spring), width 420ms var(--nav-ease-spring);
+  will-change: transform, width;
+}
+
+.nav-link {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  color: rgb(55 65 81);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 250ms ease, background-color 200ms ease;
+}
+.nav-link:not(.nav-link-active):hover {
+  color: var(--nav-brand);
+  background: rgb(255 255 255 / 0.85);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+.nav-link-active {
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgb(15 23 42 / 0.2);
+}
+.nav-link-icon {
+  display: inline-block;
+  transition: transform 300ms var(--nav-ease-spring);
+}
+.nav-link:hover .nav-link-icon {
+  transform: scale(1.2) rotate(-8deg);
+}
+.nav-link-active .nav-link-icon {
+  animation: nav-pop 400ms var(--nav-ease-spring);
+}
+@keyframes nav-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.25); }
+}
+
+/* ─── logo ─── */
+.nav-logo {
+  transition: transform 250ms var(--nav-ease-spring);
+}
+.nav-logo:hover {
+  transform: scale(1.04);
+}
+.nav-logo-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px rgb(15 23 42 / 0.08), 0 3px 8px -3px rgb(26 79 160 / 0.45);
+}
+
+/* ─── bell ─── */
+.nav-bell {
+  cursor: pointer;
+  transition: background-color 200ms ease, transform 250ms var(--nav-ease-spring), box-shadow 200ms ease;
+}
+.nav-bell:hover {
+  background: rgb(239 246 255);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -4px rgb(26 79 160 / 0.3);
+}
+.bell-ring {
+  display: inline-block;
+  transform-origin: 50% 10%;
+  /* one ring per new unread count, under 5s (WCAG 2.2.2) */
+  animation: bell-ring 4s ease-in-out 1;
+}
+/* the unread badge pulses three times and stops */
+.nav-ping {
+  animation: nav-ping 1.4s cubic-bezier(0, 0, 0.2, 1) 3 forwards;
+}
+@keyframes nav-ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+@keyframes bell-ring {
+  0%, 80%, 100% { transform: rotate(0); }
+  84% { transform: rotate(16deg); }
+  88% { transform: rotate(-14deg); }
+  92% { transform: rotate(10deg); }
+  96% { transform: rotate(-6deg); }
+}
+
+/* ─── user menu ─── */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 3px 10px 3px 3px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+.nav-user:hover,
+.nav-user.is-open {
+  background: #fff;
+  border-color: rgb(226 232 240);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 14px -8px rgb(26 79 160 / 0.35);
+}
+.nav-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--nav-brand-2), var(--nav-brand) 55%, #0f3a7a);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 3.5px rgb(34 197 94 / 0.7),
+    0 3px 8px -2px rgb(26 79 160 / 0.5);
+}
+.nav-avatar-lg {
+  width: 40px;
+  height: 40px;
+  font-size: 0.875rem;
+}
+.nav-caret {
+  font-size: 0.7rem;
+  color: rgb(156 163 175);
+  transition: transform 250ms var(--nav-ease-out);
+}
+.nav-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  text-align: left;
+  color: rgb(55 65 81);
+  cursor: pointer;
+  transition: background-color 150ms ease, padding-left 200ms var(--nav-ease-out);
+}
+.nav-menu-item:hover,
+.nav-menu-item:focus-visible {
+  background: rgb(239 246 255);
+  padding-left: 1.25rem;
+}
+
+.nav-dropdown {
+  animation: nav-drop 200ms var(--nav-ease-out);
+  transform-origin: top right;
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.05),
+    0 20px 40px -12px rgb(15 23 42 / 0.25);
+}
+@keyframes nav-drop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+}
+
+/* ─── mobile ─── */
+.nav-burger {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+.nav-burger:hover {
+  background: rgb(239 246 255);
+}
+.nav-burger > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 18px;
+}
+.nav-burger i {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(31 41 55);
+  transition: transform 300ms var(--nav-ease-out), opacity 200ms ease;
+}
+.nav-burger .is-open i:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-burger .is-open i:nth-child(2) { opacity: 0; }
+.nav-burger .is-open i:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+.nav-mobile {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0.75rem 1rem 1rem;
+  background: rgb(255 255 255 / 0.97);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgb(15 23 42 / 0.06);
+  box-shadow: 0 16px 30px -16px rgb(15 23 42 / 0.3);
+  animation: nav-drop 220ms var(--nav-ease-out);
+  transform-origin: top center;
+}
+.nav-mobile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  color: rgb(55 65 81);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.nav-mobile-link:hover {
+  background: rgb(239 246 255);
+}
+/* These classes set `display`, which (being unlayered) beats Tailwind's
+   `md:hidden`, so hide them on desktop explicitly. */
+@media (min-width: 768px) {
+  .nav-burger,
+  .nav-mobile {
+    display: none;
+  }
+}
+
+.nav-mobile-link.is-active {
+  color: #fff;
+  font-weight: 600;
+  background: linear-gradient(180deg, var(--nav-brand-2), var(--nav-brand));
+  box-shadow: 0 6px 16px -6px rgb(26 79 160 / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-nav,
+  .app-nav::before,
+  .app-nav *,
+  .app-nav *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,208 @@
+import { useEffect, useState } from 'react'
+import { api } from '@/lib/api'
+import { toast } from '@/lib/toast'
+import { Spinner } from '@/components/ui/Spinner'
+import type { Job, User } from '@/types'
+
+export function JobsScreen({ user, initialJobId }: { user: User; initialJobId?: string | null }) {
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [selected, setSelected] = useState<Job | null>(null)
+  const [search, setSearch] = useState('')
+  const [applying, setApplying] = useState(false)
+  const [applyMsg, setApplyMsg] = useState('')
+  const [profile, setProfile] = useState<any>(null)
+  const [appliedIds, setAppliedIds] = useState<string[]>([])
+
+  useEffect(() => {
+    api.getJobs().then((js: Job[]) => {
+      setJobs(js)
+      // Open the job picked on the dashboard; otherwise the first one so the detail pane isn't empty
+      setSelected(js.find(j => j.id === initialJobId) ?? js[0] ?? null)
+    }).catch(() => {})
+    api.getProfile(user.id).then(setProfile).catch(() => {})
+    api.getAppliedJobs(user.id).then(setAppliedIds).catch(() => {})
+  }, [user.id, initialJobId])
+
+  const filtered = jobs.filter(j =>
+    !search || j.jobTitle?.toLowerCase().includes(search.toLowerCase()) || j.companyName?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const handleApply = async () => {
+    if (!selected) return
+    setApplying(true); setApplyMsg('')
+    try {
+      await api.applyToJob(selected.id, user.id)
+      setAppliedIds(prev => [...prev, selected.id])
+      setApplyMsg('Applied successfully!')
+      toast('Application submitted!', 'success')
+    } catch (e: any) {
+      setApplyMsg(e.message)
+      toast(e.message, 'error')
+    }
+    finally { setApplying(false) }
+  }
+
+  const userSkills: string[] = (profile?.skills || []).map((s: string) => s.toLowerCase()).filter(Boolean)
+  const userDisability: string = profile?.disabilityType || ''
+
+  const getJobSkills = (j: Job) =>
+    (j.skills || '').split(',').map(s => s.trim()).filter(Boolean)
+
+  const matchesSkill = (skill: string) => userSkills.some(us => skill.toLowerCase().includes(us) || us.includes(skill.toLowerCase()))
+  const matchesDisability = (cat: string) => cat.toLowerCase() === userDisability.toLowerCase()
+
+  return (
+    <div className="flex-1 flex flex-col md:flex-row md:overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-full md:w-72 xl:w-96 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
+        <div className="px-4 pt-5 pb-3">
+          <h1 className="text-base font-bold text-[#1a7a3c] mb-3">Job Listings PH</h1>
+          <div className="flex items-center border border-gray-500 rounded-md px-3 py-2 gap-2 bg-white">
+            <span aria-hidden="true" className="text-gray-600 text-sm">🔍</span>
+            <input className="flex-1 text-sm outline-none placeholder-gray-500" type="search" aria-label="Search jobs by title or company"
+              placeholder="Search jobs..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+        </div>
+        <div className="px-4 flex-1 overflow-y-auto">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs font-semibold text-[#1a7a3c]">{search ? 'Search results' : 'All jobs'} ({filtered.length})</h2>
+            {search && <button type="button" onClick={() => setSearch('')} className="text-xs text-[#1a7a3c] underline min-h-6 px-1">Clear search</button>}
+          </div>
+          <p role="status" className="sr-only">{search ? `${filtered.length} job${filtered.length === 1 ? '' : 's'} found` : ''}</p>
+          {filtered.length === 0 && <p className="text-xs text-gray-600 py-4">{search ? 'No jobs match your search.' : 'No jobs posted yet.'}</p>}
+          {filtered.map(j => {
+            const isSelected = selected?.id === j.id
+            return (
+              <button key={j.id} onClick={() => { setSelected(j); setApplyMsg('') }} aria-pressed={isSelected}
+                className={`w-full text-left px-3 py-3 rounded-lg mb-2 transition-colors border ${isSelected ? 'border-[#1a7a3c] bg-green-50' : 'border-transparent hover:bg-gray-50'}`}>
+                <div className="flex items-start gap-2">
+                  <span aria-hidden="true" className="text-lg shrink-0 mt-0.5">⌨️</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <p className="font-semibold text-sm text-gray-900 truncate">{j.jobTitle}</p>
+                      {appliedIds.includes(j.id) && (
+                        <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">✓ Applied</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 truncate">{j.companyName}</p>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      <span className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full">{j.location || 'Remote'}</span>
+                      {j.salary && <span className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full">₱{j.salary}</span>}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </aside>
+
+      {/* Detail panel */}
+      <section aria-label="Job details" className="flex-1 overflow-y-auto">
+        {!selected ? (
+          <div className="h-full flex items-center justify-center">
+            <p className="text-sm text-white">{jobs.length === 0 ? 'No jobs posted yet.' : 'Select a job to view details.'}</p>
+          </div>
+        ) : (
+          <div className="p-4 sm:p-6 pb-24 sm:pb-24 grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+            {/* Header */}
+            <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span aria-hidden="true" className="text-2xl">⌨️</span>
+                <div>
+                  <h2 className="font-bold text-gray-900 text-lg">{selected.jobTitle}</h2>
+                  <p className="text-sm text-gray-600">{selected.companyName} • {selected.location || 'Remote / Work from Home'}</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {appliedIds.includes(selected.id) ? (
+                  <span className="bg-green-100 text-green-700 font-semibold rounded-full px-6 py-2 text-sm flex items-center gap-1">✓ Applied</span>
+                ) : (
+                  <button onClick={handleApply} disabled={applying}
+                    className="bg-[#1a7a3c] hover:bg-[#155f30] text-white font-semibold rounded-full px-6 py-2 text-sm transition-colors flex items-center gap-2">
+                    {applying ? <Spinner label="Applying" /> : 'Apply Now'}
+                  </button>
+                )}
+                {applyMsg && !appliedIds.includes(selected.id) && <p className="text-xs text-red-700">{applyMsg}</p>}
+              </div>
+            </div>
+
+            {/* Employer Details */}
+            <div className="xl:col-start-1 xl:row-start-2 bg-white rounded-xl border border-gray-200 px-6 py-5">
+              <h3 className="text-sm font-bold text-[#1a7a3c] mb-4">Employer Details</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-xs text-gray-600 block mb-0.5">Company Name</span>
+                  <span className="font-medium text-gray-800">{selected.companyName}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-600 block mb-0.5">Location</span>
+                  <span className="font-medium text-gray-800">{selected.location || 'Remote / Work from Home'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Job Details */}
+            <div className="xl:col-start-1 xl:row-start-3 bg-white rounded-xl border border-gray-200 px-6 py-5">
+              <h3 className="text-sm font-bold text-[#1a7a3c] mb-4">Job Details</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                <div>
+                  <span className="text-xs text-gray-600 block mb-0.5">Work Mode</span>
+                  <span className="font-medium text-gray-800">{selected.jobType}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-600 block mb-0.5">Salary</span>
+                  <span className="font-medium text-gray-800">₱{selected.salary}</span>
+                </div>
+                {selected.vacancies && (
+                  <div>
+                    <span className="text-xs text-gray-600 block mb-0.5">Vacancies</span>
+                    <span className="font-medium text-gray-800">{selected.vacancies} Vacancies</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-1">
+                <span className="text-xs text-gray-600 block mb-2">Skills Required</span>
+                <div className="flex flex-wrap gap-2">
+                  {getJobSkills(selected).map(skill => {
+                    const matched = matchesSkill(skill)
+                    return (
+                      <span key={skill} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${matched ? 'bg-[#1a4fa0] text-white' : 'bg-gray-100 text-gray-700'}`}>
+                        {matched && '✓ '}{skill}
+                      </span>
+                    )
+                  })}
+                </div>
+                {userSkills.length > 0 && <p className="text-[10px] text-gray-600 mt-2">✓ = matches your profile skills</p>}
+              </div>
+
+              {selected.disabilityCategories && selected.disabilityCategories.length > 0 && (
+                <div className="mt-4">
+                  <span className="text-xs text-gray-600 block mb-2 uppercase tracking-wide">Visual Category</span>
+                  <div className="flex flex-wrap gap-2">
+                    {selected.disabilityCategories.map(cat => {
+                      const matched = matchesDisability(cat)
+                      return (
+                        <span key={cat} className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${matched ? 'bg-gray-900 text-white border-gray-900' : 'bg-[#1a4fa0] text-white border-[#1a4fa0]'}`}>
+                          {matched && '✓ '}{cat}
+                        </span>
+                      )
+                    })}
+                  </div>
+                  {userDisability && <p className="text-[10px] text-gray-600 mt-2">✓ Suitable for your visual type ({userDisability})</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Job Description */}
+            <div className="xl:col-start-2 xl:row-start-2 xl:row-span-2 self-stretch bg-white rounded-xl border border-gray-200 px-6 py-5">
+              <h3 className="text-sm font-bold text-[#1a7a3c] mb-3">Job Description</h3>
+              <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{selected.description?.trim() || 'The employer has not added a description for this job yet.'}</p>
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
