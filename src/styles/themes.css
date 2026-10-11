@@ -1,0 +1,279 @@
+/* ═══ Display settings: fonts, colour themes, spacing, heavier text ══════════════
+   Driven by attributes on <html> set in src/lib/a11y/display-settings.ts.
+   Text size is the <html> font-size (everything is rem-based, so it all scales).
+
+   Themes work by re-pointing the app's Tailwind colour classes at a small set of
+   tokens. Rules are prefixed with `:root[data-theme] #root` so they outrank the
+   id-scoped readability floor (readability.css) without !important.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── fonts ─── */
+:root[data-font='atkinson'] { font-family: 'Atkinson Hyperlegible Next', Verdana, sans-serif; }
+:root[data-font='lexend']   { font-family: 'Lexend', Verdana, sans-serif; }
+:root[data-font='verdana']  { font-family: Verdana, Tahoma, 'DejaVu Sans', sans-serif; }
+
+/* ─── spacing: more room between letters, words and lines (WCAG 1.4.12 direction) ─── */
+:root[data-spacing='wide'] #root :is(p, li, dt, dd, label, legend, span, a, button, input, textarea, select, h1, h2, h3, h4, kbd) {
+  letter-spacing: 0.08em;
+  word-spacing: 0.16em;
+}
+:root[data-spacing='wide'] #root :is(p, li, dd, label, legend, textarea) {
+  line-height: 1.8;
+}
+
+/* ─── heavier text: thin strokes get thicker; bold stays bold ─── */
+:root[data-bold='on'] #root :is(p, li, dt, dd, label, span, a, button, input, textarea, select, kbd):not(.font-bold, .font-extrabold, .font-semibold) {
+  font-weight: 600;
+}
+:root[data-bold='on'] #root :is(h1, h2, h3, .font-bold, .font-semibold) {
+  font-weight: 800;
+}
+
+/* ─── large text layout ───
+   Tailwind's breakpoints follow the window width, not the text size, so at
+   150%+ a 4-column grid would squeeze 2× text into the same boxes. These rules
+   drop columns as text grows, so nothing clips or scrolls sideways (WCAG 1.4.10). */
+
+/* 150%+: menu folds into the menu button; the name beside the avatar hides
+   (it is still in the button's spoken name) */
+:root[data-text-large='on'] .nav-track { display: none; }
+:root[data-text-large='on'] .nav-burger { display: grid; }
+:root[data-text-large='on'] .nav-mobile { display: flex; }
+:root[data-text-large='on'] .nav-user > .lg\:flex { display: none; }
+
+/* 150%+ on phones: drop purely decorative pieces so the words get the room
+   (wordmark, divider and caret in the navbar; emoji icon tiles in lists), and keep
+   the fixed bottom buttons from doubling in size over the content */
+@media (max-width: 40rem) {
+  :root[data-text-large='on'] .nav-logo > span,
+  :root[data-text-large='on'] .app-nav [class*='bg-gradient-to-b'],
+  :root[data-text-large='on'] .nav-caret { display: none; }
+  :root[data-text-large='on'] #root span[aria-hidden='true'].shrink-0:is(.w-10, .w-12) { display: none; }
+  :root[data-size='150'] [data-a11y-bar] { zoom: 0.8; }
+  :root[data-size='175'] [data-a11y-bar] { zoom: 0.7; }
+  :root[data-size='200'] [data-a11y-bar] { zoom: 0.6; }
+}
+
+/* 150%+: 4- and 5-column grids (dashboard tiles, applicant board) become 2 columns */
+@media (min-width: 64rem) {
+  :root[data-text-large='on'] #root :is(.lg\:grid-cols-4, .lg\:grid-cols-5) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 175% and 200% */
+:root:is([data-size='175'], [data-size='200']) #root .md\:flex-row { flex-direction: column; }
+:root:is([data-size='175'], [data-size='200']) #root :is(.md\:w-72, .md\:w-48, .xl\:w-96) { width: 100%; }
+:root:is([data-size='175'], [data-size='200']) #root :is(.xl\:grid-cols-2) { grid-template-columns: minmax(0, 1fr); }
+:root:is([data-size='175'], [data-size='200']) #root :is(.xl\:col-start-1, .xl\:col-start-2, .xl\:col-span-2) { grid-column: auto; }
+:root:is([data-size='175'], [data-size='200']) #root :is(.xl\:row-start-2, .xl\:row-start-3, .xl\:row-span-2) { grid-row: auto; }
+/* below 1280px wide, every multi-column grid becomes one column */
+@media (max-width: 79.99rem) {
+  :root:is([data-size='175'], [data-size='200']) #root :is(
+    .sm\:grid-cols-2, .sm\:grid-cols-3, .lg\:grid-cols-2, .lg\:grid-cols-3, .lg\:grid-cols-4, .lg\:grid-cols-5, .min-\[420px\]\:grid-cols-2
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :root:is([data-size='175'], [data-size='200']) #root :is(.sm\:col-span-2, .sm\:col-span-3, .col-span-2) { grid-column: 1 / -1; }
+}
+
+/* ═══ colour themes ═══════════════════════════════════════════════════════════ */
+
+/* Dark: off-white on dark grey, not pure white on black (avoids halation glare). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --t-page-1: #15233d;   --t-page-2: #070d18;
+  --t-surface: #1b2433;  --t-surface-2: #252f41;  --t-hover: #313d55;  --t-input: #111a29;
+  --t-text: #eef2f7;     --t-text-2: #c9d2e0;
+  --t-line: #46536b;     --t-line-strong: #8794ab;
+  --t-brand: #9cc3ff;    --t-green: #7ee2a0;  --t-red: #ffa3a3;  --t-amber: #f6cf72;
+  --t-focus: #7dd3fc;
+}
+
+/* High contrast, yellow on black. */
+:root[data-theme='contrast-dark'] {
+  color-scheme: dark;
+  --t-page-1: #000;      --t-page-2: #000;
+  --t-surface: #000;     --t-surface-2: #000;     --t-hover: #333300;  --t-input: #000;
+  --t-text: #ffff00;     --t-text-2: #ffff00;
+  --t-line: #ffff00;     --t-line-strong: #ffff00;
+  --t-brand: #ffff00;    --t-green: #7dff9a;  --t-red: #ff9090;  --t-amber: #ffff00;
+  --t-focus: #ffffff;
+}
+
+/* High contrast, black on white. The page backdrop stays deep blue so the white
+   headings on it keep their contrast; every card is pure white with black ink. */
+:root[data-theme='contrast-light'] {
+  color-scheme: light;
+  --t-page-1: #0a2a5c;   --t-page-2: #000d24;
+  --t-surface: #fff;     --t-surface-2: #fff;     --t-hover: #fff3c4;  --t-input: #fff;
+  --t-text: #000;        --t-text-2: #000;
+  --t-line: #000;        --t-line-strong: #000;
+  --t-brand: #0a3a8c;    --t-green: #0b5d2a;  --t-red: #a10f0f;  --t-amber: #5c3a00;
+  --t-focus: #000;
+}
+
+/* ─── shared mapping for every non-standard theme ─── */
+
+/* backdrops */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) :is(.portal-backdrop, .auth-shell) {
+  background: radial-gradient(120% 100% at 50% 0%, var(--t-page-1) 0%, var(--t-page-2) 100%) fixed;
+}
+:root[data-theme='contrast-dark'] :is(.portal-backdrop, .auth-shell)::before { opacity: 0.05; }
+:root[data-theme='contrast-dark'] .auth-motif,
+:root[data-theme='contrast-dark'] .portal-backdrop::after { display: none; }
+
+/* surfaces */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(
+  .bg-white, .bg-gray-50, .bg-gray-100, .auth-card, .nav-mobile, .from-blue-50,
+  .bg-\[\#f8f9fb\], .bg-\[\#f1f5f9\], .bg-\[\#f0f2f5\], .bg-\[\#eef3fb\], .bg-\[\#eff6ff\],
+  .bg-green-50, .bg-blue-50
+) {
+  background: var(--t-surface);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.bg-gray-50, .bg-gray-100, .bg-\[\#f1f5f9\], .bg-\[\#eef3fb\], .bg-\[\#f0f2f5\]) {
+  background: var(--t-surface-2);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(
+  .hover\:bg-gray-50, .hover\:bg-gray-100, .hover\:bg-gray-200, .hover\:bg-blue-50, .hover\:bg-red-50
+):hover {
+  background: var(--t-hover);
+}
+
+/* text */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.text-gray-300, .text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700) {
+  color: var(--t-text-2);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.text-gray-800, .text-gray-900, .auth-card, .shortcut-row dd, .field-label) {
+  color: var(--t-text);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.text-\[\#1a4fa0\], .text-blue-700, .text-\[\#1e3a8a\], .auth-link, .auth-eyebrow) {
+  color: var(--t-brand);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.text-\[\#1a7a3c\], .text-green-700) { color: var(--t-green); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.text-red-700, .text-\[\#b91c1c\]) { color: var(--t-red); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.text-yellow-700, .text-\[\#713f12\]) { color: var(--t-amber); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root ::placeholder { color: var(--t-text-2); opacity: 0.85; }
+
+/* borders */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.border-gray-50, .border-gray-100, .border-gray-200, .border-gray-300, .border-blue-200, .border-transparent.border-b) {
+  border-color: var(--t-line);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.border-gray-400, .border-gray-500, .border-gray-900) {
+  border-color: var(--t-line-strong);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.border-\[\#1a4fa0\], .border-blue-200) { border-color: var(--t-brand); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.border-\[\#1a7a3c\], .border-green-400) { border-color: var(--t-green); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .border-red-400 { border-color: var(--t-red); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .border-yellow-500 { border-color: var(--t-amber); }
+
+/* status chips and status dropdowns: tinted fills become outlined labels */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.bg-green-100, select.bg-green-50) {
+  background: var(--t-surface-2); color: var(--t-green); box-shadow: inset 0 0 0 2px var(--t-green);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .bg-blue-100 {
+  background: var(--t-surface-2); color: var(--t-brand); box-shadow: inset 0 0 0 2px var(--t-brand);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.bg-yellow-100, select.bg-yellow-50) {
+  background: var(--t-surface-2); color: var(--t-amber); box-shadow: inset 0 0 0 2px var(--t-amber);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.bg-red-100, select.bg-red-50) {
+  background: var(--t-surface-2); color: var(--t-red); box-shadow: inset 0 0 0 2px var(--t-red);
+}
+
+/* form controls */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.input, input[type='search'], textarea, select) {
+  background: var(--t-input);
+  color: var(--t-text);
+  border-color: var(--t-line-strong);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root div:has(> input[type='search']) {
+  background: var(--t-input);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root input[readonly] {
+  background: var(--t-surface-2);
+}
+
+/* sign-in screens */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .role-switch {
+  background: var(--t-surface-2); box-shadow: inset 0 0 0 1px var(--t-line);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .role-switch button { color: var(--t-text); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .role-switch button[aria-pressed='true'] {
+  background: var(--t-surface); color: var(--t-brand); border-color: var(--t-brand);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .shortcut-row { border-color: var(--t-line); }
+
+/* navbar */
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .app-nav {
+  background: var(--t-surface);
+  border-bottom: 1px solid var(--t-line);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .nav-track {
+  background: var(--t-surface-2); box-shadow: inset 0 0 0 1px var(--t-line);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.nav-link, .nav-menu-item, .nav-mobile-link) { color: var(--t-text); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.nav-link-active, .nav-mobile-link.is-active) { color: #fff; }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(
+  .nav-link:not(.nav-link-active):hover, .nav-menu-item:hover, .nav-menu-item:focus-visible,
+  .nav-mobile-link:not(.is-active):hover, .nav-burger:hover, .nav-bell:hover, .nav-user:hover, .nav-user.is-open
+) {
+  background: var(--t-hover); color: var(--t-text);
+}
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .nav-burger i { background: var(--t-text); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .nav-caret { color: var(--t-text-2); }
+:root:is([data-theme='dark'], [data-theme='contrast-dark'], [data-theme='contrast-light']) #root .nav-dropdown { border-color: var(--t-line); }
+
+/* Display button */
+:root:is([data-theme='dark'], [data-theme='contrast-dark']) #root .a11y-display-btn {
+  background: var(--t-surface); color: var(--t-brand); box-shadow: 0 0 0 2px var(--t-brand), 0 8px 20px -6px rgb(0 0 0 / 0.6);
+}
+
+/* focus ring: a colour that stands out against each theme's surfaces */
+:root:is([data-theme='dark'], [data-theme='contrast-dark']) :focus-visible {
+  outline-color: var(--t-focus) !important;
+  box-shadow: 0 0 0 2px #000 !important;
+}
+:root[data-theme='contrast-light'] :focus-visible {
+  outline: 4px solid #000 !important;
+  box-shadow: 0 0 0 9px #ffd23f !important;
+}
+
+/* ─── high contrast extras: thicker outlines everywhere ─── */
+:root:is([data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.border, .nav-dropdown) { border-width: 2px; }
+:root:is([data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.auth-card, [role='dialog'], .rounded-xl.shadow-sm, .rounded-xl.shadow-xl) {
+  outline: 2px solid var(--t-line);
+}
+
+/* yellow-on-black: anything that was a solid colour fill becomes solid yellow with
+   black text (primary buttons, selected chips, active menu item, avatars, toasts) */
+:root[data-theme='contrast-dark'] #root :is(
+  .bg-\[\#1a7a3c\], .bg-\[\#1a4fa0\], .bg-\[\#1a6fcc\], .bg-red-700, .bg-\[\#b91c1c\], .bg-\[\#a16207\],
+  .bg-gray-900, .btn-primary, .nav-indicator, .nav-avatar, .nav-mobile-link.is-active, .a11y-display-icon
+) {
+  background: #ffff00;
+  color: #000;
+  border-color: #ffff00;
+}
+:root[data-theme='contrast-dark'] #root :is(
+  .hover\:bg-\[\#155f30\], .hover\:bg-red-800, .hover\:bg-\[\#1558a8\], .btn-primary
+):hover {
+  background: #e6e600;
+}
+:root[data-theme='contrast-dark'] #root :is(.nav-link-active, .text-green-100) { color: #000; }
+:root[data-theme='contrast-dark'] #root .text-white:not(:is(.bg-\[\#1a7a3c\], .bg-\[\#1a4fa0\], .bg-\[\#1a6fcc\], .bg-red-700, .bg-\[\#b91c1c\], .bg-\[\#a16207\], .bg-gray-900, .btn-primary, .toast, .toast *)) {
+  color: var(--t-text);
+}
+:root[data-theme='contrast-dark'] #root .toast { background: #ffff00; color: #000; }
+:root[data-theme='contrast-dark'] #root :is(.sr-panel, .bd) { background: #000; box-shadow: 0 0 0 2px #ffff00; }
+:root[data-theme='contrast-dark'] #root .auth-showcase { color: #ffff00; }
+:root[data-theme='contrast-dark'] #root .bd-dot.is-up { background: #ffff00; box-shadow: none; }
+
+/* Windows High Contrast / forced colours: let the system palette win, keep shapes */
+@media (forced-colors: active) {
+  .a11y-toggle, .a11y-display-btn, .role-switch button[aria-pressed='true'] { border: 2px solid ButtonText; }
+  .nav-indicator { background: Highlight; }
+  :focus-visible { outline: 3px solid Highlight !important; }
+}

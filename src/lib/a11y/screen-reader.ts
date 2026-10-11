@@ -58,6 +58,14 @@ function describeElement(el: HTMLElement): string {
   const placeholder = (el as HTMLInputElement).placeholder || ''
   const value = (el as HTMLInputElement).value || ''
 
+  if (tag === 'input' && (type === 'radio' || type === 'checkbox')) {
+    const name = el.getAttribute('aria-labelledby')
+      ? document.getElementById(el.getAttribute('aria-labelledby')!)?.textContent?.trim()
+      : labelText
+    const checked = (el as HTMLInputElement).checked
+    return `${name || 'Option'}, ${type === 'radio' ? 'radio button' : 'check box'}, ${checked ? 'checked' : 'not checked'}`
+  }
+
   if (tag === 'input' || tag === 'textarea') {
     const fieldName = labelText || placeholder || 'Input field'
     const typeHint = type === 'password' ? 'password field' : type === 'number' ? 'number field' : tag === 'textarea' ? 'text area' : 'text field'

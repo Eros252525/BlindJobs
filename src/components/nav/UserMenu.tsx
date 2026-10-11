@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useDismiss } from '@/hooks/useDismiss'
 import { initials } from '@/lib/format'
+import { openDisplaySettings } from '@/lib/a11y/display-settings'
+import { openLegal } from '@/lib/legal'
 import type { Screen, User } from '@/types'
 import type { NavLink } from './nav-links'
 
@@ -43,6 +45,15 @@ export function UserMenu({ user, onNavigate, items }: {
                 <span aria-hidden="true">{i.icon}</span>{i.label}
               </button>
             ))}
+            <button data-speak="Display settings" onClick={() => { setOpen(false); openDisplaySettings() }} className="nav-menu-item">
+              <span aria-hidden="true">Aa</span>Display settings
+            </button>
+            <button data-speak="Privacy Notice" onClick={() => { setOpen(false); openLegal('privacy') }} className="nav-menu-item">
+              <span aria-hidden="true">🔒</span>Privacy Notice
+            </button>
+            <button data-speak="Terms and Conditions" onClick={() => { setOpen(false); openLegal('terms') }} className="nav-menu-item">
+              <span aria-hidden="true">📄</span>Terms and Conditions
+            </button>
           </div>
           <div className="py-1 border-t border-gray-100">
             <button data-speak="Log out" onClick={() => go('login')} className="nav-menu-item text-red-700 hover:bg-red-50">

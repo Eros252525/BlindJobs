@@ -6,6 +6,10 @@ export const EMPLOYER_SCREENS: Screen[] = ['emp-dashboard', 'emp-post-job', 'emp
 
 export const KANBAN_COLS = ['New', 'Reviewed', 'Interviewing', 'Hired', 'Rejected']
 
+// Fired on window by the notification bell when a new update arrives (an
+// application changed stage or came in, or a matching job was posted)
+export const APPLICATION_UPDATE_EVENT = 'bj:application-update'
+
 export const SCREEN_LABELS: Partial<Record<Screen, string>> = {
   intro: 'Welcome. Navigation guide.',
   login: 'Sign in.',

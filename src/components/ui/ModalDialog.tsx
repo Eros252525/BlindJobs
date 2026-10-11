@@ -6,8 +6,8 @@ import { useEffect, useRef, type ReactNode } from 'react'
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-export function ModalDialog({ labelledBy, onClose, returnFocusTo, children }: {
-  labelledBy: string; onClose: () => void; returnFocusTo?: string; children: ReactNode
+export function ModalDialog({ labelledBy, onClose, returnFocusTo, wide = false, children }: {
+  labelledBy: string; onClose: () => void; returnFocusTo?: string; wide?: boolean; children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
@@ -38,7 +38,7 @@ export function ModalDialog({ labelledBy, onClose, returnFocusTo, children }: {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={labelledBy}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        className={`bg-white rounded-xl shadow-2xl w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} max-h-[calc(100dvh-2rem)] overflow-y-auto`} onClick={e => e.stopPropagation()}>
         {children}
       </div>
     </div>

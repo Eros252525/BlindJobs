@@ -10,3 +10,5 @@
 @import './styles/toast.css';
 /* Last, so its size and colour floor applies on top of everything above. */
 @import './styles/readability.css';
+/* User display settings (font, theme, spacing); outranks the floor when chosen. */
+@import './styles/themes.css';

@@ -34,24 +34,28 @@ blindss/
 │   │   └── shared/             Messages (both roles)
 │   │
 │   ├── components/             Pieces used by several screens
-│   │   ├── a11y/               Screen Reader toggle button, braille lettering
+│   │   ├── a11y/               Display + Screen Reader buttons, Display settings dialog, braille
 │   │   ├── auth/               Signed-out page frame + screen-reader/braille panel
+│   │   ├── legal/              Privacy Notice / Terms dialog, consent boxes at registration
 │   │   ├── nav/                Top navbar, notification bell, account menu
 │   │   ├── toast/              Pop-up messages ("Resume saved")
 │   │   └── ui/                 Form field, password box, error message, dialog, spinner
 │   │
 │   ├── lib/                    Logic with no UI
 │   │   ├── a11y/
+│   │   │   ├── display-settings.ts   Text size, font, colours, spacing (saved per device)
 │   │   │   ├── screen-reader.ts      Built-in reader (F2 toggles it)
 │   │   │   ├── arrow-navigation.ts   Arrow-key movement between items
 │   │   │   └── braille.ts            Braille dot patterns for letters
 │   │   ├── api.ts              Everything that talks to Supabase
+│   │   ├── legal.ts            Privacy Notice and Terms text, and their versions
+│   │   ├── matching.ts         When a job matches an applicant (skills, location, visual category)
 │   │   ├── resume.ts           Resume choices (education levels, assistive tech, …)
 │   │   ├── validation.ts       Required-field checks for forms
 │   │   ├── format.ts           Names, dates, stage colours
 │   │   └── toast.ts            Show a toast from anywhere
 │   │
-│   ├── hooks/                  React hooks (screen-change announcements, closing menus)
+│   ├── hooks/                  React hooks (screen-change announcements, closing menus, reload on a notification)
 │   │
 │   └── styles/                 CSS, loaded in order by index.css
 │       ├── tokens.css          Brand colours and motion
@@ -61,7 +65,8 @@ blindss/
 │       ├── auth.css            Signed-out screens + the blue braille backdrop
 │       ├── a11y-toggle.css     Screen Reader button (grey off, green on)
 │       ├── toast.css           Pop-up messages
-│       └── readability.css     Minimum text sizes and contrast for low vision
+│       ├── readability.css     Minimum text sizes and contrast for low vision
+│       └── themes.css          Display settings: fonts, dark/high-contrast themes, spacing
 │
 ├── supabase/functions/server/  Edge function (backend, in progress)
 └── utils/supabase/info.tsx     Supabase project ID (auto-generated, do not edit)
@@ -78,7 +83,11 @@ blindss/
 | Resume fields or their choices | `src/lib/resume.ts`, `src/types.ts`, `ProfileScreen.tsx` |
 | Colours | `src/styles/tokens.css` |
 | Text size / contrast floor | `src/styles/readability.css` |
+| Display settings options (fonts, themes, sizes) | `src/lib/a11y/display-settings.ts` |
+| How a theme colours the app | `src/styles/themes.css` |
 | Saving or loading data | `src/lib/api.ts` |
+| The Privacy Notice or Terms wording | `src/lib/legal.ts` (raise the version when you do) |
+| Who gets told about a new job | `src/lib/matching.ts` |
 
 ## Keyboard
 
@@ -99,3 +108,6 @@ blindss/
   or `role="alert"` region, or a toast.
 - No text below 14px; secondary text no lighter than gray-700.
 - Check a changed screen with axe DevTools (WCAG 2.2 AA) and with the keyboard alone.
+- Check it under each Display setting too: Dark, both High contrast themes, and
+  200% text. New colour classes need a mapping in `themes.css`, and sizes should
+  be in rem (not px) so they grow with the chosen text size.

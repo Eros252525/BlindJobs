@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { stageColor, timeAgo } from '@/lib/format'
 import { toast } from '@/lib/toast'
+import { useUpdateTick } from '@/hooks/useUpdateTick'
 import { Spinner } from '@/components/ui/Spinner'
 import type { Conversation, Job, Screen, User } from '@/types'
 
@@ -14,6 +15,9 @@ export function DashboardScreen({ user, onNavigate, onOpenJob }: {
   const [apps, setApps] = useState<MyApplication[] | null>(null)
   const [convCount, setConvCount] = useState(0)
   const [applyingId, setApplyingId] = useState<string | null>(null)
+
+  // a notification just arrived: reload so the lists below match what it said
+  const reload = useUpdateTick()
 
   useEffect(() => {
     let cancelled = false
@@ -34,7 +38,7 @@ export function DashboardScreen({ user, onNavigate, onOpenJob }: {
       setConvCount(convs.length)
     })()
     return () => { cancelled = true }
-  }, [user.id])
+  }, [user.id, reload])
 
   const appliedSet = new Set(apps?.map(a => a.job.id))
   const openJobs = (jobs || []).filter(j => (j.status || 'Active') === 'Active')
@@ -133,10 +137,11 @@ export function DashboardScreen({ user, onNavigate, onOpenJob }: {
             ) : latest.map(job => {
               const applied = appliedSet.has(job.id)
               return (
-                <div key={job.id} className="flex items-center gap-2 px-1 rounded-lg hover:bg-gray-50 transition-colors">
+                // wraps so Apply drops below the title when text is very large, instead of squeezing it
+                <div key={job.id} className="flex flex-wrap items-center gap-2 px-1 rounded-lg hover:bg-gray-50 transition-colors">
                   <button onClick={() => onOpenJob(job.id)}
                     data-speak={`${job.jobTitle} at ${job.companyName}, ${job.location || 'Remote'}${job.salary ? `, salary ${job.salary} pesos` : ''}. Posted ${timeAgo(job.createdAt)}`}
-                    className="flex-1 min-w-0 text-left px-2 py-3 flex items-center gap-3">
+                    className="flex-1 min-w-[10rem] text-left px-2 py-3 flex items-center gap-3">
                     <span aria-hidden="true" className="w-10 h-10 rounded-lg bg-green-50 grid place-items-center text-lg shrink-0">⌨️</span>
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-gray-900 truncate">{job.jobTitle}</span>

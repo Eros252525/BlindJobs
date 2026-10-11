@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { toast } from '@/lib/toast'
+import { useUpdateTick } from '@/hooks/useUpdateTick'
 import type { Applicant, Job, Screen, User } from '@/types'
 
 export function EmpDashboardScreen({ user, onNavigate, onViewCandidates }: {
@@ -17,8 +18,13 @@ export function EmpDashboardScreen({ user, onNavigate, onViewCandidates }: {
       js.forEach((j: Job) => { statuses[j.id] = j.status || 'Active' })
       setJobStatuses(statuses)
     }).catch(() => {})
-    api.getEmployerApplicants(user.id).then(setApplicants).catch(() => {})
   }, [user.id])
+
+  // reloads when the bell reports a new application, so the counts match what it said
+  const reload = useUpdateTick()
+  useEffect(() => {
+    api.getEmployerApplicants(user.id).then(setApplicants).catch(() => {})
+  }, [user.id, reload])
 
   const uniqueCandidates = new Set(applicants.map(a => a.applicantId)).size
   const activeJobs = jobs.filter(j => (jobStatuses[j.id] || 'Active') === 'Active').length

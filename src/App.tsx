@@ -6,6 +6,7 @@ import { APPLICANT_SCREENS, EMPLOYER_SCREENS } from './constants'
 import type { Screen, User } from './types'
 import { ToastContainer } from './components/toast/ToastContainer'
 import { AccessibilityBar } from './components/a11y/AccessibilityBar'
+import { LegalDialogHost } from './components/legal/LegalDialog'
 import { ApplicantNav, EmployerNav } from './components/nav/RoleNav'
 import { IntroScreen } from './screens/auth/IntroScreen'
 import { LoginScreen } from './screens/auth/LoginScreen'
@@ -66,8 +67,8 @@ export default function App() {
       <ToastContainer />
       {/* WCAG 2.4.1: let keyboard users jump past the navbar on every portal screen */}
       {isLoggedIn && <a href="#main-content" className="skip-link">Skip to main content</a>}
-      {isApplicant && user && <ApplicantNav active={screen} user={user} onNavigate={navigate} />}
-      {isEmployer && user && <EmployerNav active={screen} user={user} onNavigate={navigate} />}
+      {isApplicant && user && <ApplicantNav active={screen} user={user} onNavigate={navigate} onOpenJob={openJob} />}
+      {isEmployer && user && <EmployerNav active={screen} user={user} onNavigate={navigate} onOpenJob={openCandidates} />}
 
       {screen === 'intro' && <IntroScreen onContinue={() => setScreen('login')} />}
       {screen === 'login' && <LoginScreen onLogin={handleLogin} onNavigate={setScreen} />}
@@ -91,6 +92,7 @@ export default function App() {
       <AccessibilityBar
         srEnabled={srEnabled} onToggleSr={() => sr.toggle()}
       />
+      <LegalDialogHost />
     </div>
   )
 }

@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api'
+import { NO_CONSENT } from '@/lib/legal'
 import { focusFirst, missingFields, missingMessage } from '@/lib/validation'
 import { AuthShell } from '@/components/auth/AuthShell'
+import { ConsentFields, consentMessage, untickedConsent } from '@/components/legal/ConsentFields'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { FormField } from '@/components/ui/FormField'
 import { GmailUsernameInput } from '@/components/ui/GmailUsernameInput'
@@ -13,7 +15,7 @@ const ERROR_ID = 'reg-app-error'
 
 export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User) => void; onBack: () => void }) {
   const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', suffix: '', emailUsername: '', mobile: '', gender: '', disabilityType: 'Legally Blind', password: '' })
-  const [agreed, setAgreed] = useState(false)
+  const [consent, setConsent] = useState(NO_CONSENT)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [invalid, setInvalid] = useState<Set<string>>(new Set())
@@ -34,12 +36,14 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
       { id: 'reg-disability', label: 'Disability type', value: form.disabilityType },
       { id: 'reg-password', label: 'Password', value: form.password },
     ])
-    setInvalid(new Set(missing.map(f => f.id)))
+    // consent is checked once the fields are complete, so the error names one thing at a time
+    const unticked = missing.length ? [] : untickedConsent('reg-consent', consent)
+    setInvalid(new Set([...missing, ...unticked].map(f => f.id)))
     if (missing.length) { setError(missingMessage(missing)); focusFirst(missing); return }
-    if (!agreed) { setError('You must agree to the Terms and Conditions'); document.getElementById('reg-terms')?.focus(); return }
+    if (unticked.length) { setError(consentMessage(unticked)); focusFirst(unticked); return }
     setError(''); setLoading(true)
     try {
-      const user = await api.register({ role: 'applicant', ...form })
+      const user = await api.register({ role: 'applicant', ...form, consent })
       onLogin(user)
     } catch (e: any) { setError(e.message) }
     finally { setLoading(false) }
@@ -87,12 +91,7 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
           <PasswordInput id="reg-password" value={form.password} onChange={(v) => set('password', v)} autoComplete="new-password" {...fieldState('reg-password')} />
         </FormField>
 
-        {/* No Terms page exists yet, so this is plain text rather than a link that goes nowhere. */}
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input id="reg-terms" type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required
-            className="w-6 h-6 shrink-0 accent-[#1a4fa0]" />
-          <span className="text-gray-800">I agree to the Terms and Conditions.</span>
-        </label>
+        <ConsentFields idPrefix="reg-consent" role="applicant" value={consent} onChange={setConsent} invalid={invalid} errorId={ERROR_ID} />
         <ErrorMsg id={ERROR_ID} msg={error} />
 
         <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-70" disabled={loading} aria-busy={loading}>

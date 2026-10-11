@@ -4,9 +4,10 @@ import { NavBell } from './NavBell'
 import { UserMenu } from './UserMenu'
 import type { NavLink } from './nav-links'
 
-export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuItems }: {
+export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuItems, onOpenJob }: {
   active: Screen; user: User; onNavigate: (s: Screen) => void
   home: Screen; links: NavLink[]; msgScreen: Screen; menuItems: NavLink[]
+  onOpenJob?: (jobId: string) => void
 }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -82,7 +83,7 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        <NavBell userId={user.id} onNavigate={onNavigate} msgScreen={msgScreen} />
+        <NavBell userId={user.id} onNavigate={onNavigate} msgScreen={msgScreen} updatesScreen={home} onOpenJob={onOpenJob} />
         <span className="w-px h-7 bg-gradient-to-b from-transparent via-gray-200 to-transparent mx-1" aria-hidden="true" />
         <UserMenu user={user} onNavigate={onNavigate} items={menuItems} />
         <button onClick={() => setMobileOpen(o => !o)} aria-expanded={mobileOpen} aria-controls="nav-mobile"

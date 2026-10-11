@@ -1,7 +1,8 @@
 /* Keep arrow-key/Tab focus targets from scrolling under the sticky navbar (top) and
    the fixed Screen Reader button (bottom) — WCAG 2.4.11 Focus Not Obscured. */
 html {
-  scroll-padding-top: 88px;
+  /* rem, so it grows with the chosen text size along with the navbar */
+  scroll-padding-top: 5.5rem;
   scroll-padding-bottom: 6rem;
 }
 

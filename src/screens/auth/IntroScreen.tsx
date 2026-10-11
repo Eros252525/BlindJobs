@@ -18,6 +18,7 @@ const MOUSE: GuideItem[] = [
   { keys: ['Click'], icon: '🖱', label: 'Press any button, link or field' },
   { keys: ['Scroll'], icon: '🖱', label: 'Move up and down the page' },
   { keys: ['Screen Reader'], icon: '🔊', label: 'Bottom-right button: reader on or off' },
+  { keys: ['Display'], icon: 'Aa', label: 'Bottom-right: text size, font and colours' },
 ]
 
 function GuideList({ id, title, items }: { id: string; title: string; items: GuideItem[] }) {

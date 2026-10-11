@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api'
+import { openLegal } from '@/lib/legal'
 import { AuthShell } from '@/components/auth/AuthShell'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { PasswordInput } from '@/components/ui/PasswordInput'
@@ -69,6 +70,11 @@ export function LoginScreen({ onLogin, onNavigate }: { onLogin: (u: User) => voi
           onClick={() => onNavigate(role === 'employer' ? 'register-employer' : 'register-applicant')}>
           Create an {roleLabel} account
         </button>
+      </p>
+      <p className="text-center mt-1">
+        <button type="button" className="auth-link" aria-haspopup="dialog" onClick={() => openLegal('privacy')}>Privacy Notice</button>
+        <span aria-hidden="true" className="text-gray-600"> · </span>
+        <button type="button" className="auth-link" aria-haspopup="dialog" onClick={() => openLegal('terms')}>Terms and Conditions</button>
       </p>
     </AuthShell>
   )

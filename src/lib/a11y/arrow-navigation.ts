@@ -50,6 +50,15 @@ function findLabel(el: HTMLElement): string {
 
 function readEl(el: HTMLElement) {
   const tag = el.tagName
+  const type = (el as HTMLInputElement).type?.toLowerCase()
+
+  if (tag === 'INPUT' && (type === 'radio' || type === 'checkbox')) {
+    const byId = el.getAttribute('aria-labelledby')
+    const label = (byId && document.getElementById(byId)?.textContent?.trim()) || findLabel(el)
+    srSpeak(`${label}, ${type === 'radio' ? 'radio button' : 'check box'}, ${(el as HTMLInputElement).checked ? 'checked' : 'not checked'}`)
+    return
+  }
+
   const isField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA'
 
   if (isField) {
@@ -236,7 +245,8 @@ export function useRemoteControl() {
           const name = (active as HTMLInputElement).name
           const checked = document.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)
           if (checked) {
-            const lbl = document.querySelector<HTMLLabelElement>(`label[for="${checked.id}"]`)
+            const byId = checked.getAttribute('aria-labelledby')
+            const lbl = (byId && document.getElementById(byId)) || document.querySelector<HTMLLabelElement>(`label[for="${checked.id}"]`)
             srSpeak(lbl?.textContent?.trim() || checked.value)
           }
         }, 50)

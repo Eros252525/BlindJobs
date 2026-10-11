@@ -171,8 +171,9 @@
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 14px -8px rgb(26 79 160 / 0.35);
 }
 .nav-avatar {
-  width: 32px;
-  height: 32px;
+  /* rem, so the circle grows with the chosen text size instead of clipping the initials */
+  width: 2rem;
+  height: 2rem;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -188,8 +189,8 @@
     0 3px 8px -2px rgb(26 79 160 / 0.5);
 }
 .nav-avatar-lg {
-  width: 40px;
-  height: 40px;
+  width: 2.5rem;
+  height: 2.5rem;
   font-size: 0.875rem;
 }
 .nav-caret {

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
+import { jobSkillList, skillMatches } from '@/lib/matching'
 import { toast } from '@/lib/toast'
 import { Spinner } from '@/components/ui/Spinner'
 import type { Job, User } from '@/types'
+
+const isOpen = (j: Job) => (j.status || 'Active') === 'Active'
 
 export function JobsScreen({ user, initialJobId }: { user: User; initialJobId?: string | null }) {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -14,13 +17,15 @@ export function JobsScreen({ user, initialJobId }: { user: User; initialJobId?: 
   const [appliedIds, setAppliedIds] = useState<string[]>([])
 
   useEffect(() => {
-    api.getJobs().then((js: Job[]) => {
-      setJobs(js)
+    Promise.all([api.getJobs(), api.getAppliedJobs(user.id).catch(() => [] as string[])]).then(([js, applied]: [Job[], string[]]) => {
+      // Paused and closed jobs are not offered, but one the applicant already applied to stays visible
+      const visible = js.filter(j => isOpen(j) || applied.includes(j.id))
+      setJobs(visible)
+      setAppliedIds(applied)
       // Open the job picked on the dashboard; otherwise the first one so the detail pane isn't empty
-      setSelected(js.find(j => j.id === initialJobId) ?? js[0] ?? null)
+      setSelected(visible.find(j => j.id === initialJobId) ?? visible[0] ?? null)
     }).catch(() => {})
     api.getProfile(user.id).then(setProfile).catch(() => {})
-    api.getAppliedJobs(user.id).then(setAppliedIds).catch(() => {})
   }, [user.id, initialJobId])
 
   const filtered = jobs.filter(j =>
@@ -42,13 +47,11 @@ export function JobsScreen({ user, initialJobId }: { user: User; initialJobId?: 
     finally { setApplying(false) }
   }
 
-  const userSkills: string[] = (profile?.skills || []).map((s: string) => s.toLowerCase()).filter(Boolean)
+  const userSkills: string[] = (profile?.skills || []).filter(Boolean)
   const userDisability: string = profile?.disabilityType || ''
 
-  const getJobSkills = (j: Job) =>
-    (j.skills || '').split(',').map(s => s.trim()).filter(Boolean)
-
-  const matchesSkill = (skill: string) => userSkills.some(us => skill.toLowerCase().includes(us) || us.includes(skill.toLowerCase()))
+  const getJobSkills = jobSkillList
+  const matchesSkill = (skill: string) => skillMatches(skill, userSkills)
   const matchesDisability = (cat: string) => cat.toLowerCase() === userDisability.toLowerCase()
 
   return (
@@ -82,6 +85,9 @@ export function JobsScreen({ user, initialJobId }: { user: User; initialJobId?: 
                       <p className="font-semibold text-sm text-gray-900 truncate">{j.jobTitle}</p>
                       {appliedIds.includes(j.id) && (
                         <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">✓ Applied</span>
+                      )}
+                      {!isOpen(j) && (
+                        <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-semibold shrink-0">{j.status}</span>
                       )}
                     </div>
                     <p className="text-xs text-gray-600 truncate">{j.companyName}</p>
@@ -124,6 +130,7 @@ export function JobsScreen({ user, initialJobId }: { user: User; initialJobId?: 
                   </button>
                 )}
                 {applyMsg && !appliedIds.includes(selected.id) && <p className="text-xs text-red-700">{applyMsg}</p>}
+                {!isOpen(selected) && <p className="text-xs text-gray-600">{selected.status}: no longer accepting applications</p>}
               </div>
             </div>
 

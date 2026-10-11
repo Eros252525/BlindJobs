@@ -56,6 +56,39 @@
   background: rgb(5 46 22 / 0.12);
 }
 
+/* Display settings button, beside the reader toggle */
+.a11y-display-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0.5rem 1.1rem 0.5rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a4fa0;
+  background: #fff;
+  box-shadow: 0 0 0 2px #1a4fa0, 0 8px 20px -6px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+}
+.a11y-display-btn:hover { background: #eff6ff; }
+.a11y-display-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: #1a4fa0;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+/* phones: drop the key hint so both buttons fit on one row */
+@media (max-width: 480px) {
+  .a11y-toggle-key { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .a11y-toggle { transition: none; }
 }

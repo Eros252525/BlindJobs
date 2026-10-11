@@ -7,7 +7,7 @@ export type Screen =
 
 export interface User { id: string; role: Role; email: string; name: string }
 
-export interface Job { id: string; employerId: string; companyName: string; jobTitle: string; skills: string; location: string; salary: string; jobType: string; experienceLevel: string; description: string; createdAt: string; status?: string; vacancies?: string; disabilityCategories?: string[] }
+export interface Job { id: string; employerId: string; companyName: string; jobTitle: string; skills: string; location: string; salary: string; jobType: string; experienceLevel: string; description: string; createdAt: string; status?: string; vacancies?: string; disabilityCategories?: string[]; listed?: boolean; deleted?: boolean }
 
 export interface WorkExperience { title: string; company: string; period: string }
 
@@ -29,4 +29,12 @@ export interface Applicant { applicantId: string; jobId: string; jobTitle: strin
 
 export interface Conversation { id: string; applicantId: string; employerId: string; applicantName: string; employerName: string; jobTitle: string; jobId?: string }
 
+// One row each, notification:<userId>:<time>:<id>. `read` is not stored; the API
+// works it out from notifications_seen:<userId> on load.
+// 'stage' = an employer moved the user's application; 'job' = a new job that matches
+// them; 'application' = someone applied to the employer's job.
+export interface AppNotification { id: string; type: 'stage' | 'job' | 'application'; jobId: string; stage?: string; text: string; createdAt: string; read: boolean }
+
 export interface Message { id: string; senderId: string; senderName: string; text: string; sentAt: string }
+
+export interface UnreadMessage extends Message { convId: string; jobTitle: string }

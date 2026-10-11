@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
+import { setOpenConversation } from '@/lib/open-conversation'
 import { toast } from '@/lib/toast'
 import { Spinner } from '@/components/ui/Spinner'
 import type { Conversation, Message, User } from '@/types'
@@ -21,12 +22,19 @@ export function MessagesScreen({ user }: { user: User }) {
 
   useEffect(() => {
     if (!selected) return
-    api.getMessages(selected.id).then(setMessages).catch(() => {})
-    api.markConversationRead(user.id, selected.id).catch(() => {})
-    const t = setInterval(() => {
-      api.getMessages(selected.id).then(setMessages).catch(() => {})
-    }, 5000)
-    return () => clearInterval(t)
+    setOpenConversation(selected.id)
+    // Mark read on opening and again whenever a poll brings something new, so a
+    // message read here is not still counted as unread on the bell.
+    let seen = -1
+    const load = () => api.getMessages(selected.id).then((ms: Message[]) => {
+      setMessages(ms)
+      if (ms.length === seen) return
+      seen = ms.length
+      api.markConversationRead(user.id, selected.id).catch(() => {})
+    }).catch(() => {})
+    load()
+    const t = setInterval(load, 5000)
+    return () => { clearInterval(t); setOpenConversation(null) }
   }, [selected, user.id])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])

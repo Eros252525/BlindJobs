@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import { stageColor } from '@/lib/format'
 import { toast } from '@/lib/toast'
 import { KANBAN_COLS } from '@/constants'
+import { useUpdateTick } from '@/hooks/useUpdateTick'
 import { ModalDialog } from '@/components/ui/ModalDialog'
 import { Spinner } from '@/components/ui/Spinner'
 import type { Applicant, Conversation, Job, User } from '@/types'
@@ -16,8 +17,13 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
   const [responseMsg, setResponseMsg] = useState('')
   const [updating, setUpdating] = useState(false)
 
+  // reloads when the bell reports a new application, so the board matches what it said
+  const reload = useUpdateTick()
   useEffect(() => {
     api.getEmployerApplicants(user.id).then(setApplicants).catch(() => {})
+  }, [user.id, reload])
+
+  useEffect(() => {
     api.getEmployerJobs(user.id).then((js: Job[]) => {
       setJobs(js)
       // opened from a job's "Candidates" button: start filtered to that job

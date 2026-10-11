@@ -1,29 +1,94 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
+import { timeAgo } from '@/lib/format'
+import { getOpenConversation } from '@/lib/open-conversation'
+import { toast } from '@/lib/toast'
+import { APPLICATION_UPDATE_EVENT } from '@/constants'
 import { useDismiss } from '@/hooks/useDismiss'
-import type { Conversation, Screen } from '@/types'
+import type { AppNotification, Conversation, Screen, UnreadMessage } from '@/types'
 
-export function NavBell({ userId, onNavigate, msgScreen }: { userId: string; onNavigate: (s: Screen) => void; msgScreen: Screen }) {
-  const [count, setCount] = useState(0)
+export function NavBell({ userId, onNavigate, msgScreen, updatesScreen, onOpenJob }: {
+  userId: string; onNavigate: (s: Screen) => void; msgScreen: Screen; updatesScreen: Screen
+  onOpenJob?: (jobId: string) => void
+}) {
+  const [msgCount, setMsgCount] = useState(0)
+  const [updates, setUpdates] = useState<AppNotification[]>([])
   const [open, setOpen] = useState(false)
   const [convs, setConvs] = useState<Conversation[]>([])
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
 
+  const unreadUpdates = updates.filter(n => !n.read).length
+  const count = msgCount + unreadUpdates
+  // the newest few, but never hide one that is still unread
+  const shown = updates.slice(0, Math.max(5, unreadUpdates))
+  const updatesRef = useRef(updates)
+  updatesRef.current = updates
+
   useEffect(() => {
-    const refresh = () => api.getUnreadCount(userId).then(setCount).catch(() => {})
+    let live = true
+    let firstLoad = true
+    // A badge on the bell is silent, so each new message or update is also sent as a
+    // toast (live region + built-in reader). Ids are kept so it is said once, not every poll.
+    const announced = new Set<string>()
+    const unsaid = <T extends { id: string }>(list: T[]) => {
+      const fresh = list.filter(x => !announced.has(x.id))
+      fresh.forEach(x => announced.add(x.id))
+      return fresh
+    }
+    const refresh = async () => {
+      const [msgs, items] = await Promise.all([
+        api.getUnreadMessages(userId).catch(() => null) as Promise<UnreadMessage[] | null>,
+        api.getNotifications(userId).catch(() => null) as Promise<AppNotification[] | null>,
+      ])
+      if (!live) return
+      const say: string[] = []
+      if (msgs) {
+        // the conversation on screen announces its own messages and marks them read
+        const unread = msgs.filter(m => m.convId !== getOpenConversation())
+        setMsgCount(unread.length)
+        const fresh = unsaid(unread)
+        if (fresh.length === 1) say.push(`New message from ${fresh[0].senderName} about ${fresh[0].jobTitle}.`)
+        else if (fresh.length > 1) say.push(`You have ${fresh.length} new messages.`)
+      }
+      if (items) {
+        setUpdates(items)
+        const fresh = unsaid(items.filter(n => !n.read))
+        if (fresh.length === 1) say.push(fresh[0].text)
+        else if (fresh.length > 1) say.push(`You have ${fresh.length} new updates. Open Notifications to read them.`)
+        // screens listing jobs and applications reload; right after sign-in they are fresh already
+        if (fresh.length && !firstLoad) window.dispatchEvent(new Event(APPLICATION_UPDATE_EVENT))
+        firstLoad = false
+      }
+      // one toast, so a message and an update arriving together are both heard
+      if (say.length) toast(say.join(' '), 'info')
+    }
     refresh()
     const t = setInterval(refresh, 15000)
-    return () => clearInterval(t)
+    return () => { live = false; clearInterval(t) }
   }, [userId])
 
   useEffect(() => {
     if (!open) return
     api.getConversations(userId).then(setConvs).catch(() => {})
+    // Updates count as read once the panel closes, so "New" stays put while it is open
+    return () => {
+      const unreadIds = updatesRef.current.filter(n => !n.read).map(n => n.id)
+      if (!unreadIds.length) return
+      api.markNotificationsRead(userId, unreadIds).catch(() => {})
+      setUpdates(list => list.map(n => ({ ...n, read: true })))
+    }
   }, [open, userId])
 
   const handleGoToMessages = () => { setOpen(false); onNavigate(msgScreen) }
+  // A matched job opens ready to apply, and a new application opens that job's
+  // candidates; a stage change opens the applicant's list of applications.
+  const handleOpenUpdate = (n: AppNotification) => {
+    setOpen(false)
+    if (n.type !== 'stage' && onOpenJob) onOpenJob(n.jobId)
+    else onNavigate(updatesScreen)
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -49,18 +114,40 @@ export function NavBell({ userId, onNavigate, msgScreen }: { userId: string; onN
           </div>
 
           <div className="max-h-64 overflow-y-auto">
-            {convs.length === 0 ? (
-              <p className="text-sm text-gray-600 text-center py-6">No conversations yet.</p>
-            ) : (
-              convs.map(c => (
-                <button key={c.id} onClick={handleGoToMessages}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors">
-                  <p className="text-sm font-semibold text-gray-800 truncate">
-                    {msgScreen === 'messages' ? c.employerName : c.applicantName}
-                  </p>
-                  <p className="text-xs text-gray-600 truncate">{c.jobTitle}</p>
-                </button>
-              ))
+            {shown.length > 0 && (
+              <div role="group" aria-labelledby="bell-updates">
+                <p id="bell-updates" className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-600">Job and application updates</p>
+                {shown.map(n => (
+                  <button key={n.id} onClick={() => handleOpenUpdate(n)}
+                    data-speak={`${n.read ? '' : 'New. '}${n.text} ${timeAgo(n.createdAt)}`}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors">
+                    <p className={`text-sm text-gray-800 ${n.read ? '' : 'font-semibold'}`}>
+                      {!n.read && <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">New<span className="sr-only">:</span></span>}
+                      {!n.read && ' '}{n.text}
+                    </p>
+                    <p className="text-xs text-gray-600">{timeAgo(n.createdAt)}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {convs.length > 0 && (
+              <div role="group" aria-labelledby="bell-messages">
+                <p id="bell-messages" className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-600">Messages</p>
+                {convs.map(c => (
+                  <button key={c.id} onClick={handleGoToMessages}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors">
+                    <p className="text-sm font-semibold text-gray-800 truncate">
+                      {msgScreen === 'messages' ? c.employerName : c.applicantName}
+                    </p>
+                    <p className="text-xs text-gray-600 truncate">{c.jobTitle}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {shown.length === 0 && convs.length === 0 && (
+              <p className="text-sm text-gray-600 text-center py-6">No notifications yet.</p>
             )}
           </div>
 
