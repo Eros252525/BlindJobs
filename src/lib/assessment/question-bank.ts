@@ -3,6 +3,7 @@
 // per kind of work.
 //
 // Only questions marked `approved` are ever drawn.
+import type { CheckAttempt } from '@/types'
 import { QUESTION_BANK } from './questions'
 import type { Question, QuestionWeight } from './questions/question'
 import type { WorkCategoryId } from './work-categories'
@@ -66,6 +67,19 @@ export function scoreCheck(questions: Question[], answers: Record<string, number
     if (answers[x.id] === x.answer) { earned += x.weight; correct++ } else missed.push(x)
   }
   return { score: possible ? Math.round((earned / possible) * 100) : 0, earned, possible, correct, total: questions.length, missed }
+}
+
+/** The record of one finished check: the questions drawn, the option chosen for each, and the score. */
+export function checkAttempt(categoryId: string, questions: Question[], answers: Record<string, number>, result: CheckResult): CheckAttempt {
+  return {
+    id: crypto.randomUUID(), categoryId, takenAt: new Date().toISOString(),
+    score: result.score, earned: result.earned, possible: result.possible, correct: result.correct, total: result.total,
+    answers: questions.map(x => ({
+      questionId: x.id, topic: x.topic, weight: x.weight,
+      chosen: answers[x.id] == null ? null : x.options[answers[x.id]],
+      right: answers[x.id] === x.answer,
+    })),
+  }
 }
 
 /** A score in a word. Blind Jobs' own bands; an employer may set a different minimum on a job. */

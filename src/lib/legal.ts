@@ -23,8 +23,8 @@ export interface LegalDoc { id: LegalDocId; title: string; version: string; effe
 const PRIVACY: LegalDoc = {
   id: 'privacy',
   title: 'Privacy Notice',
-  version: '1.1',
-  effective: 'October 13, 2026',
+  version: '1.2',
+  effective: 'October 14, 2026',
   summary: 'This notice explains what personal data Blind Jobs collects, why, who can see it, and your rights under the Data Privacy Act of 2012 (Republic Act No. 10173).',
   sections: [
     {
@@ -39,7 +39,7 @@ const PRIVACY: LegalDoc = {
       body: ['We collect only what you type into Blind Jobs.'],
       items: [
         'Applicants: your name, email address, mobile number, gender if you give it, type of visual disability, skills, city or province, education, work experience, assistive technology, preferred work setup, the workplace accommodations you would ask for, languages, and your "About me" text.',
-        'Applicants who take a skills check: the kind of work, your score, how many answers were right, the date, and how many times you have taken it.',
+        'Applicants who take a skills check: the kind of work, your score, how many answers were right, the date, and how many times you have taken it. For every check you finish, including retakes, we also keep which questions you were given and the answer you chose for each.',
         'Employers: your company name, your Gmail address, and the jobs you post.',
         'Everyone: your password, the messages you send, the jobs you apply to, and the stage of each application.',
       ],
@@ -55,6 +55,7 @@ const PRIVACY: LegalDoc = {
       heading: 'Skills checks and the job-fit score',
       body: [
         'A skills check is ten questions about one kind of work. Your latest score is saved on your profile.',
+        'We also keep every check you finish, with your answers. Employers do not see these answers; they see only your latest score.',
         'The job-fit score is worked out by the system from your skills, your skills-check score, your preferred work setup, your location and your work experience. Your type of visual disability is not used in it.',
         'The score is always shown with its reasons, to you and to the employer. It is a guide. A person at the employer, not the system, decides on every application.',
       ],
@@ -66,6 +67,7 @@ const PRIVACY: LegalDoc = {
         'to create your account and sign you in;',
         'to show applicants the jobs that fit their skills, location and visual category;',
         'to suggest kinds of work to an applicant, and to rank jobs for them by how well they fit;',
+        'to check that the skills-check questions are fair and clear, for example by finding questions that many people get wrong;',
         'to tell an employer which accommodations an applicant would ask for, so the two can discuss them;',
         'to share an applicant\'s resume with the employers they apply to;',
         'to let applicants and employers message each other and follow each application;',
@@ -90,7 +92,7 @@ const PRIVACY: LegalDoc = {
       heading: 'How long we keep your data',
       body: [
         'We keep your data for as long as your account is open.',
-        'When you ask us to close your account, we delete your profile, applications and messages, unless a law requires us to keep them.',
+        'When you ask us to close your account, we delete your profile, skills-check answers, applications and messages, unless a law requires us to keep them.',
       ],
     },
     {

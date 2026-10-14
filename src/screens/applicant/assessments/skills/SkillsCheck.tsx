@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { api } from '@/lib/api'
-import { approvedQuestions, drawQuestions, scoreCheck, type CheckResult, type Question } from '@/lib/assessment/question-bank'
+import { approvedQuestions, checkAttempt, drawQuestions, scoreCheck, type CheckResult, type Question } from '@/lib/assessment/question-bank'
 import type { WorkCategory } from '@/lib/assessment/work-categories'
 import { toast } from '@/lib/toast'
 import { useStepFocus } from '@/hooks/useStepFocus'
-import type { ApplicantProfile, CategoryScore } from '@/types'
+import type { ApplicantProfile, CategoryScore, CheckAttempt } from '@/types'
 import { IntroPage } from './IntroPage'
 import { QuestionPage } from './QuestionPage'
 import { ResultPage } from './ResultPage'
@@ -27,8 +27,8 @@ export function SkillsCheck({ userId, category, previous, onSaved, onBack, onNex
   onBack: () => void
   /** Pressed on the result page; defaults to `onBack`. */
   onNext?: () => void
-  /** Takes the result instead of saving it to a profile, for when there is no account yet. */
-  onResult?: (r: { score: number; correct: number; total: number }) => void
+  /** Takes the result and the attempt instead of saving them, for when there is no account yet. */
+  onResult?: (r: { score: number; correct: number; total: number }, attempt: CheckAttempt) => void
   labels?: { back?: string; next?: string }
 }) {
   const backLabel = labels?.back ?? 'Back to assessments'
@@ -40,6 +40,8 @@ export function SkillsCheck({ userId, category, previous, onSaved, onBack, onNex
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [warned, setWarned] = useState(false)
+  // Reused when Submit is pressed again after a failed save, so one attempt is never stored twice
+  const attempt = useRef<CheckAttempt | null>(null)
 
   const question = typeof phase === 'number' ? questions[phase] : null
 
@@ -50,6 +52,7 @@ export function SkillsCheck({ userId, category, previous, onSaved, onBack, onNex
   const headingRef = useStepFocus<HTMLHeadingElement>(phase, spoken)
 
   const start = () => {
+    attempt.current = null
     setQuestions(drawQuestions(category.id)); setAnswers({}); setResult(null); setError(''); setWarned(false); setPhase(0)
   }
 
@@ -64,8 +67,12 @@ export function SkillsCheck({ userId, category, previous, onSaved, onBack, onNex
     setBusy(true); setError('')
     try {
       const summary = { score: scored.score, correct: scored.correct, total: scored.total }
-      if (onResult) onResult(summary)
-      else onSaved?.(await api.saveCategoryScore(userId!, category.id, summary))
+      const record = attempt.current ??= checkAttempt(category.id, questions, answers, scored)
+      if (onResult) onResult(summary, record)
+      else {
+        await api.saveCheckAttempt(userId!, record)
+        onSaved?.(await api.saveCategoryScore(userId!, category.id, summary))
+      }
       setResult(scored); setPhase('result')
       toast(`${category.name}: ${scored.score} out of 100.`, 'success')
     } catch (e: any) { setError(`Your result could not be saved: ${e.message}`) }
@@ -88,7 +95,7 @@ export function SkillsCheck({ userId, category, previous, onSaved, onBack, onNex
   return <QuestionPage headingRef={headingRef} category={category} question={question} index={index} total={questions.length}
     answer={answers[question.id]} answered={questions.filter(x => answers[x.id] != null).length}
     busy={busy} error={error} warned={warned}
-    onAnswer={(i) => { setAnswers(a => ({ ...a, [question.id]: i })); setError(''); setWarned(false) }}
+    onAnswer={(i) => { attempt.current = null; setAnswers(a => ({ ...a, [question.id]: i })); setError(''); setWarned(false) }}
     onPrevious={() => { setError(''); setPhase(index - 1) }}
     onNext={() => { setError(''); setPhase(index + 1) }}
     onSubmit={submit} onLeave={onBack} />

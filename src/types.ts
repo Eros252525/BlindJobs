@@ -35,6 +35,16 @@ export interface ApplicantProfile {
 
 export interface CategoryScore { score: number; correct: number; total: number; takenAt: string; attempts: number }
 
+// One row per finished skills check, assessment_attempt:<userId>:<takenAt>:<id>,
+// so retakes and the answers given are kept. The profile holds only the latest score.
+// `chosen` is the option's text, not its position: options are shuffled on every draw.
+export interface CheckAnswer { questionId: string; topic: string; weight: number; chosen: string | null; right: boolean }
+export interface CheckAttempt {
+  id: string; userId?: string; categoryId: string; takenAt: string
+  score: number; earned: number; possible: number; correct: number; total: number
+  answers: CheckAnswer[]
+}
+
 export interface Applicant { applicantId: string; jobId: string; jobTitle: string; stage: string; appliedAt: string; profile: ApplicantProfile | null; job?: Job | null }
 
 export interface Conversation { id: string; applicantId: string; employerId: string; applicantName: string; employerName: string; jobTitle: string; jobId?: string }

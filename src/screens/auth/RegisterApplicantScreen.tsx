@@ -4,7 +4,7 @@ import { categoryById, type WorkCategoryId } from '@/lib/assessment/work-categor
 import { NO_CONSENT } from '@/lib/legal'
 import { useStepFocus } from '@/hooks/useStepFocus'
 import { SkillsCheck } from '@/screens/applicant/assessments/skills/SkillsCheck'
-import type { ApplicantProfile, User } from '@/types'
+import type { ApplicantProfile, CheckAttempt, User } from '@/types'
 import { AccountStep } from './register/AccountStep'
 import { CategoryStep } from './register/CategoryStep'
 import { FinishStep } from './register/FinishStep'
@@ -25,6 +25,8 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
   const [work, setWork] = useState<WorkProfile>(EMPTY_WORK_PROFILE)
   const [categoryId, setCategoryId] = useState<WorkCategoryId | null>(null)
   const [check, setCheck] = useState<CheckSummary | null>(null)
+  // Every check finished here, retakes and other kinds of work included; saved with the account
+  const [attempts, setAttempts] = useState<CheckAttempt[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   // Set once the account exists, so a retry after a failed save does not register twice
@@ -67,6 +69,7 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
         location: work.location.trim(), workSetup: work.workSetup, assistiveTech: work.assistiveTech, accommodations: work.accommodations,
         experience: work.jobTitle.trim() ? [{ title: work.jobTitle.trim(), company: work.company.trim(), period: '' }] : [],
       })
+      await Promise.all(attempts.map(a => api.saveCheckAttempt(user.id, a)))
       if (check && categoryId) await api.saveCategoryScore(user.id, categoryId, check)
       onLogin(user)
     } catch (e: any) {
@@ -99,7 +102,7 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
   if (step === 'check' && category) {
     return (
       <StepFrame step={step}>
-        <SkillsCheck category={category} previous={draft.categoryScores?.[category.id]} onResult={setCheck}
+        <SkillsCheck category={category} previous={draft.categoryScores?.[category.id]} onResult={(summary, attempt) => { setCheck(summary); setAttempts(list => [...list, attempt]) }}
           onBack={() => go('category')} onNext={() => go('finish')}
           labels={{ back: 'Choose a different kind of work', next: 'Continue' }} />
       </StepFrame>

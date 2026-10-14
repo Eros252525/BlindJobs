@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { consentRecord } from '@/lib/legal'
 import { jobMatch, type JobMatch } from '@/lib/matching'
-import type { ApplicantProfile, CategoryScore, Job } from '@/types'
+import type { ApplicantProfile, CategoryScore, CheckAttempt, Job } from '@/types'
 
 type G = typeof globalThis & { __bjSb?: SupabaseClient }
 const g = globalThis as G
@@ -44,7 +44,7 @@ async function kvList(prefix: string, newest?: number): Promise<any[]> {
 //
 //   job:<jobId>                             application:<jobId>:<applicantId>
 //   conversation_member:<userId>:<convId>   message:<convId>:<messageId>
-//   notification:<userId>:<time>:<id>
+//   notification:<userId>:<time>:<id>       assessment_attempt:<userId>:<time>:<id>
 //
 // These used to be single rows holding a whole list (jobs:list,
 // job_applications:<jobId>, conversations:user:<userId>, messages:<convId>).
@@ -164,6 +164,11 @@ export async function saveCategoryScore(userId: string, categoryId: string, resu
   const updated = { ...profile, categoryScores: { ...(profile.categoryScores || {}), [categoryId]: entry } }
   await kvSet(`applicant_profile:${userId}`, updated)
   return updated as ApplicantProfile
+}
+
+/** Keeps one finished check, answers included (see CheckAttempt). Saving the same attempt again overwrites it, so a retry never duplicates it. */
+export async function saveCheckAttempt(userId: string, attempt: CheckAttempt) {
+  await kvSet(`assessment_attempt:${userId}:${attempt.takenAt}:${attempt.id}`, { ...attempt, userId })
 }
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────
@@ -413,7 +418,7 @@ export async function markConversationRead(userId: string, convId: string) {
 export const api = {
   register, login, emailAvailable,
   getProfile, updateProfile,
-  saveCategoryScore,
+  saveCategoryScore, saveCheckAttempt,
   getJobs, postJob, getEmployerJobs, updateJobStatus, deleteJob,
   applyToJob, getAppliedJobs, getApplicationStage, getEmployerApplicants, updateStage,
   getConversations, createConversation, getMessages, sendMessage,
