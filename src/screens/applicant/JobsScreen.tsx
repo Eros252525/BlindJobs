@@ -11,6 +11,8 @@ import type { ApplicantProfile, Job, User } from '@/types'
 const isOpen = (j: Job) => (j.status || 'Active') === 'Active'
 // Below Tailwind's md breakpoint the list and the details take turns on screen
 const isNarrow = () => window.matchMedia('(max-width: 767px)').matches
+// The list shows the best-fitting jobs first, this many at a time, so nobody scrolls through all of them
+const PAGE = 10
 
 export function JobsScreen({ user, initialJobId, onOpenCheck }: {
   user: User; initialJobId?: string | null
@@ -26,6 +28,9 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
   const [appliedIds, setAppliedIds] = useState<string[]>([])
   // Phones: true while a job's details fill the screen in place of the list
   const [showDetail, setShowDetail] = useState(false)
+  const [shown, setShown] = useState(PAGE)
+  // A new search starts again from its best matches
+  useEffect(() => { setShown(PAGE) }, [search])
   const detailRef = useRef<HTMLElement>(null)
   const detailHeadingRef = useRef<HTMLHeadingElement>(null)
 
@@ -60,6 +65,9 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
       setProfile(p)
       // Open the job picked on the dashboard; otherwise the best fit so the detail pane isn't empty
       setSelected(visible.find(j => j.id === initialJobId) ?? rankJobs(visible, p)[0]?.job ?? null)
+      // A job opened from elsewhere is listed even when it ranks below the first page
+      const at = rankJobs(visible, p).findIndex(r => r.job.id === initialJobId)
+      if (at >= PAGE) setShown(at + 1)
       // A job opened from the dashboard or a notification goes straight to its details on a phone
       if (initialJobId && visible.some(j => j.id === initialJobId) && isNarrow()) setShowDetail(true)
     }).catch(() => {})
@@ -101,7 +109,7 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
     // From tablet width up, the list and the details each scroll on their own
     <div className="flex-1 flex flex-col md:flex-row md:min-h-0 md:overflow-hidden">
       {/* Sidebar */}
-      <aside className={`w-full md:w-72 xl:w-96 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex-col ${showDetail ? 'hidden md:flex' : 'flex'}`}>
+      <aside className={`w-full md:w-80 xl:w-96 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex-col ${showDetail ? 'hidden md:flex' : 'flex'}`}>
         <div className="px-4 pt-5 pb-3">
           <h1 className="text-base font-bold text-[#1a7a3c] mb-3">Job Listings PH</h1>
           <div className="flex items-center border border-gray-500 rounded-md px-3 py-2 gap-2 bg-white">
@@ -113,7 +121,7 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
           <p id="job-search-hint" className="mt-2 text-sm text-gray-700">
             {result?.summary
               ? <>Searching for: <span className="font-semibold text-gray-900">{result.summary}</span></>
-              : 'Type what you want in English or Filipino: the kind of work, remote or on-site, a city, your visual category or a salary.'}
+              : 'In English or Filipino: kind of work, city, remote, salary.'}
           </p>
         </div>
         <div className="px-4 flex-1 overflow-y-auto">
@@ -122,20 +130,19 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
             {search && <button type="button" onClick={() => setSearch('')} className="text-xs text-[#1a7a3c] underline min-h-6 px-1">Clear search</button>}
           </div>
           <p className="text-xs text-gray-600 mb-2">
-            {result ? 'Ranked by how well each job matches your search and fits your profile.' : 'Ranked by how well each job fits your profile, best fit first.'}
+            {result ? 'Best match for your search and profile first.' : 'Best fit for your profile first.'}
           </p>
           <p role="status" className="sr-only">
             {result ? `${filtered.length} job${filtered.length === 1 ? '' : 's'} found${result.summary ? ` for ${result.summary}` : ''}` : ''}
           </p>
           {filtered.length === 0 && <p className="text-xs text-gray-600 py-4">{search ? 'No jobs match your search. Try fewer words, or leave out the city or salary.' : 'No jobs posted yet.'}</p>}
-          {filtered.map(({ job: j, fit }, i) => {
+          {filtered.slice(0, shown).map(({ job: j, fit }, i) => {
             const isSelected = selected?.id === j.id
             return (
               <button key={j.id} data-job-id={j.id} onClick={() => openJob(j)} aria-pressed={isSelected}
                 data-speak={`Number ${i + 1}. ${j.jobTitle} at ${j.companyName}. ${fit.eligible ? `${fitLabel(fit.score)}, ${fit.score} out of 100` : 'Limited to other visual categories'}${appliedIds.includes(j.id) ? '. Applied' : ''}`}
-                className={`w-full text-left px-3 py-3 rounded-lg mb-2 transition-colors border ${isSelected ? 'border-[#1a7a3c] bg-green-50' : 'border-transparent hover:bg-gray-50'}`}>
+                className={`w-full text-left px-3 py-2 rounded-lg mb-1 transition-colors border ${isSelected ? 'border-[#1a7a3c] bg-green-50' : 'border-transparent hover:bg-gray-50'}`}>
                 <div className="flex items-start gap-2">
-                  <span aria-hidden="true" className="text-lg shrink-0 mt-0.5">⌨️</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 flex-wrap">
                       <p className="font-semibold text-sm text-gray-900 truncate">{j.jobTitle}</p>
@@ -146,9 +153,9 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
                         <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full font-semibold shrink-0">{j.status}</span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 truncate">{j.companyName}</p>
+                    {/* Company and place share a line, salary and fit the next: two short rows instead of three */}
+                    <p className="text-xs text-gray-600 truncate">{j.companyName} · {j.location || 'Remote'}</p>
                     <div className="flex gap-1 mt-1 flex-wrap">
-                      <span className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full">{j.location || 'Remote'}</span>
                       {j.salary && <span className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full">₱{j.salary}</span>}
                       <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">
                         {fit.eligible ? `${fitLabel(fit.score)}: ${fit.score}/100` : 'Other visual categories'}
@@ -159,6 +166,19 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
               </button>
             )
           })}
+          {filtered.length > shown && (
+            <button type="button"
+              onClick={() => {
+                // focus the first job just revealed, so keyboard and screen reader users carry on from there
+                const next = filtered[shown]?.job.id
+                setShown(s => s + PAGE)
+                requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-job-id="${next}"]`)?.focus())
+              }}
+              className="w-full min-h-11 mt-1 mb-4 px-4 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 font-semibold rounded-md text-sm">
+              Show {Math.min(PAGE, filtered.length - shown)} more jobs
+              <span className="block text-xs font-normal text-gray-600">Showing {shown} of {filtered.length}</span>
+            </button>
+          )}
         </div>
       </aside>
 
