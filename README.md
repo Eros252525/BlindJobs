@@ -67,6 +67,7 @@ blindss/
 │   │   ├── legal.ts            Privacy Notice and Terms text, and their versions
 │   │   ├── matching.ts         When a job matches an applicant (skills, location, visual category)
 │   │   ├── job-fit.ts          The 0–100 job-fit score, its reasons, and the ranking of jobs
+│   │   ├── job-search.ts       Search in plain English or Filipino: filters + BM25 ranking
 │   │   ├── resume.ts           Resume choices (education levels, assistive tech, …)
 │   │   ├── validation.ts       Required-field checks for forms
 │   │   ├── format.ts           Names, dates, stage colours
@@ -106,6 +107,7 @@ blindss/
 | The Privacy Notice or Terms wording | `src/lib/legal.ts` (raise the version when you do) |
 | Who gets told about a new job | `src/lib/matching.ts` |
 | How the job-fit score is worked out, or its weights | `src/lib/job-fit.ts` |
+| Words the job search understands (synonyms, Filipino, places) | `src/lib/job-search.ts` |
 | A skills-check question | `src/lib/assessment/questions/<kind-of-work>.ts` |
 | Add a kind of work | `src/lib/assessment/work-categories.ts`, then a questions file listed in `questions/index.ts` |
 | A step of applicant registration | `src/screens/auth/register/` (order and names in `steps.ts`) |

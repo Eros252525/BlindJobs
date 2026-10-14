@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { categoryById } from '@/lib/assessment/work-categories'
 import { fitLabel, rankJobs } from '@/lib/job-fit'
+import { searchJobs } from '@/lib/job-search'
 import { jobSkillList, skillMatches } from '@/lib/matching'
 import { toast } from '@/lib/toast'
 import { Spinner } from '@/components/ui/Spinner'
@@ -38,11 +39,11 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
     }).catch(() => {})
   }, [user.id, initialJobId])
 
-  // Best fit first (see job-fit.ts); the search only narrows the list, it does not reorder it
+  // Best fit first (see job-fit.ts); a search filters the list and orders it by
+  // what was asked for as well as fit (see job-search.ts)
   const ranked = rankJobs(jobs, profile)
-  const filtered = ranked.filter(({ job: j }) =>
-    !search || j.jobTitle?.toLowerCase().includes(search.toLowerCase()) || j.companyName?.toLowerCase().includes(search.toLowerCase())
-  )
+  const result = search.trim() ? searchJobs(search, ranked) : null
+  const filtered = result ? result.hits : ranked
   const selectedFit = selected ? ranked.find(r => r.job.id === selected.id)?.fit : undefined
   const selectedCategory = categoryById(selected?.workCategory)
   // The employer made this job's skills check a condition of applying, and it has not been taken
@@ -78,18 +79,28 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
           <h1 className="text-base font-bold text-[#1a7a3c] mb-3">Job Listings PH</h1>
           <div className="flex items-center border border-gray-500 rounded-md px-3 py-2 gap-2 bg-white">
             <span aria-hidden="true" className="text-gray-600 text-sm">🔍</span>
-            <input className="flex-1 text-sm outline-none placeholder-gray-500" type="search" aria-label="Search jobs by title or company"
-              placeholder="Search jobs..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="flex-1 text-sm outline-none placeholder-gray-500" type="search" aria-label="Search jobs in your own words"
+              aria-describedby="job-search-hint" placeholder="e.g. remote call center job in QC" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          {/* Shows how the search was understood, so a wrong guess can be seen and reworded */}
+          <p id="job-search-hint" className="mt-2 text-sm text-gray-700">
+            {result?.summary
+              ? <>Searching for: <span className="font-semibold text-gray-900">{result.summary}</span></>
+              : 'Type what you want in English or Filipino: the kind of work, remote or on-site, a city, your visual category or a salary.'}
+          </p>
         </div>
         <div className="px-4 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-semibold text-[#1a7a3c]">{search ? 'Search results' : 'All jobs'} ({filtered.length})</h2>
             {search && <button type="button" onClick={() => setSearch('')} className="text-xs text-[#1a7a3c] underline min-h-6 px-1">Clear search</button>}
           </div>
-          <p className="text-xs text-gray-600 mb-2">Ranked by how well each job fits your profile, best fit first.</p>
-          <p role="status" className="sr-only">{search ? `${filtered.length} job${filtered.length === 1 ? '' : 's'} found` : ''}</p>
-          {filtered.length === 0 && <p className="text-xs text-gray-600 py-4">{search ? 'No jobs match your search.' : 'No jobs posted yet.'}</p>}
+          <p className="text-xs text-gray-600 mb-2">
+            {result ? 'Ranked by how well each job matches your search and fits your profile.' : 'Ranked by how well each job fits your profile, best fit first.'}
+          </p>
+          <p role="status" className="sr-only">
+            {result ? `${filtered.length} job${filtered.length === 1 ? '' : 's'} found${result.summary ? ` for ${result.summary}` : ''}` : ''}
+          </p>
+          {filtered.length === 0 && <p className="text-xs text-gray-600 py-4">{search ? 'No jobs match your search. Try fewer words, or leave out the city or salary.' : 'No jobs posted yet.'}</p>}
           {filtered.map(({ job: j, fit }, i) => {
             const isSelected = selected?.id === j.id
             return (
