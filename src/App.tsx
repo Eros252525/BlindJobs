@@ -14,6 +14,7 @@ import { RegisterApplicantScreen } from './screens/auth/RegisterApplicantScreen'
 import { RegisterEmployerScreen } from './screens/auth/RegisterEmployerScreen'
 import { DashboardScreen } from './screens/applicant/DashboardScreen'
 import { ProfileScreen } from './screens/applicant/ProfileScreen'
+import { AssessmentsScreen } from './screens/applicant/AssessmentsScreen'
 import { JobsScreen } from './screens/applicant/JobsScreen'
 import { MessagesScreen } from './screens/shared/MessagesScreen'
 import { EmpDashboardScreen } from './screens/employer/EmpDashboardScreen'
@@ -48,14 +49,18 @@ export default function App() {
   // Job picked on a dashboard: preselected in Jobs (applicant) or used as the board
   // filter in Applicants (employer). Plain navigation clears it.
   const [jobFocus, setJobFocus] = useState<string | null>(null)
+  // Skills check picked on the dashboard or a job (take or retake): opened straight away in Assessments
+  const [checkFocus, setCheckFocus] = useState<string | null>(null)
 
   const navigate = (s: Screen) => {
     if ((s === 'login' || s === 'intro') && user) { handleLogout(); return }
     setJobFocus(null)
+    setCheckFocus(null)
     setScreen(s)
   }
 
   const openJob = (jobId: string) => { setJobFocus(jobId); setScreen('jobs') }
+  const openCheck = (categoryId: string) => { setCheckFocus(categoryId); setScreen('assessments') }
   const openCandidates = (jobId: string) => { setJobFocus(jobId); setScreen('emp-applicants') }
 
   const isApplicant = APPLICANT_SCREENS.includes(screen)
@@ -77,9 +82,10 @@ export default function App() {
 
       {isLoggedIn && (
         <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 focus:outline-none">
-        {screen === 'dashboard' && user && <DashboardScreen user={user} onNavigate={navigate} onOpenJob={openJob} />}
+        {screen === 'dashboard' && user && <DashboardScreen user={user} onNavigate={navigate} onOpenJob={openJob} onOpenCheck={openCheck} />}
         {screen === 'profile' && user && <ProfileScreen user={user} />}
-        {screen === 'jobs' && user && <JobsScreen user={user} initialJobId={jobFocus} />}
+        {screen === 'assessments' && user && <AssessmentsScreen user={user} onNavigate={navigate} initialCategory={checkFocus} />}
+        {screen === 'jobs' && user && <JobsScreen user={user} initialJobId={jobFocus} onOpenCheck={openCheck} />}
         {screen === 'messages' && user && <MessagesScreen user={user} />}
 
         {screen === 'emp-dashboard' && user && <EmpDashboardScreen user={user} onNavigate={navigate} onViewCandidates={openCandidates} />}

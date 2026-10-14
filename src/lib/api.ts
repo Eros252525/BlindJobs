@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { consentRecord } from '@/lib/legal'
 import { jobMatch, type JobMatch } from '@/lib/matching'
-import type { ApplicantProfile, Job } from '@/types'
+import type { ApplicantProfile, CategoryScore, Job } from '@/types'
 
 type G = typeof globalThis & { __bjSb?: SupabaseClient }
 const g = globalThis as G
@@ -85,6 +85,11 @@ async function findUserByEmail(input: string): Promise<any> {
   return null
 }
 
+/** False when an account already uses this email (or username). */
+export async function emailAvailable(emailUsername: string): Promise<boolean> {
+  return !(await findUserByEmail(emailUsername))
+}
+
 export async function register(body: Record<string, any>) {
   const { role, emailUsername, password, firstName, lastName, middleName, suffix, mobile, gender, disabilityType, skills, companyName, consent } = body
   if (!emailUsername?.trim()) throw new Error('Email username is required')
@@ -147,6 +152,18 @@ export async function updateProfile(userId: string, body: Record<string, any>) {
   const updated = { ...existing, ...body }
   await kvSet(`applicant_profile:${userId}`, updated)
   return updated
+}
+
+// ── Assessments ───────────────────────────────────────────────────────────────
+
+/** Saves a skills-check result on the profile, where the jobs the applicant applies to can see it. */
+export async function saveCategoryScore(userId: string, categoryId: string, result: { score: number; correct: number; total: number }) {
+  const profile = await kvGet(`applicant_profile:${userId}`) || {}
+  const previous: CategoryScore | undefined = profile.categoryScores?.[categoryId]
+  const entry: CategoryScore = { ...result, takenAt: new Date().toISOString(), attempts: (previous?.attempts || 0) + 1 }
+  const updated = { ...profile, categoryScores: { ...(profile.categoryScores || {}), [categoryId]: entry } }
+  await kvSet(`applicant_profile:${userId}`, updated)
+  return updated as ApplicantProfile
 }
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────
@@ -218,6 +235,11 @@ export async function applyToJob(jobId: string, applicantId: string) {
   if (!job || job.deleted) throw new Error('Job not found')
   if (!isOpen(job)) throw new Error('This job is no longer accepting applications')
   if (await getApplication(jobId, applicantId)) throw new Error('Already applied')
+  // Checked here as well as on the screen, so no path to applying gets round a required check
+  if (job.requireCheck && job.workCategory) {
+    const profile = await kvGet(`applicant_profile:${applicantId}`)
+    if (!profile?.categoryScores?.[job.workCategory]) throw new Error('This job requires its skills check. Take it on the Assessments page, then apply.')
+  }
   const application = { applicantId, jobId, stage: 'New', appliedAt: new Date().toISOString() }
   await kvSet(`application:${jobId}:${applicantId}`, application)
   // Track applied jobs per applicant
@@ -242,7 +264,7 @@ export async function getEmployerApplicants(employerId: string) {
   for (const jobId of empList.ids) {
     const job = await kvGet(`job:${jobId}`)
     for (const app of await getJobApplications(jobId)) {
-      result.push({ ...app, profile: await kvGet(`applicant_profile:${app.applicantId}`), jobTitle: job?.jobTitle || jobId })
+      result.push({ ...app, profile: await kvGet(`applicant_profile:${app.applicantId}`), jobTitle: job?.jobTitle || jobId, job })
     }
   }
   return result
@@ -389,8 +411,9 @@ export async function markConversationRead(userId: string, convId: string) {
 }
 
 export const api = {
-  register, login,
+  register, login, emailAvailable,
   getProfile, updateProfile,
+  saveCategoryScore,
   getJobs, postJob, getEmployerJobs, updateJobStatus, deleteJob,
   applyToJob, getAppliedJobs, getApplicationStage, getEmployerApplicants, updateStage,
   getConversations, createConversation, getMessages, sendMessage,

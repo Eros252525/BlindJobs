@@ -23,8 +23,8 @@ export interface LegalDoc { id: LegalDocId; title: string; version: string; effe
 const PRIVACY: LegalDoc = {
   id: 'privacy',
   title: 'Privacy Notice',
-  version: '1.0',
-  effective: 'October 12, 2026',
+  version: '1.1',
+  effective: 'October 13, 2026',
   summary: 'This notice explains what personal data Blind Jobs collects, why, who can see it, and your rights under the Data Privacy Act of 2012 (Republic Act No. 10173).',
   sections: [
     {
@@ -38,7 +38,8 @@ const PRIVACY: LegalDoc = {
       heading: 'What we collect',
       body: ['We collect only what you type into Blind Jobs.'],
       items: [
-        'Applicants: your name, Gmail address, mobile number, gender if you give it, type of visual disability, skills, city or province, education, work experience, assistive technology, preferred work setup, languages, and your "About me" text.',
+        'Applicants: your name, email address, mobile number, gender if you give it, type of visual disability, skills, city or province, education, work experience, assistive technology, preferred work setup, the workplace accommodations you would ask for, languages, and your "About me" text.',
+        'Applicants who take a skills check: the kind of work, your score, how many answers were right, the date, and how many times you have taken it.',
         'Employers: your company name, your Gmail address, and the jobs you post.',
         'Everyone: your password, the messages you send, the jobs you apply to, and the stage of each application.',
       ],
@@ -51,11 +52,21 @@ const PRIVACY: LegalDoc = {
       ],
     },
     {
+      heading: 'Skills checks and the job-fit score',
+      body: [
+        'A skills check is ten questions about one kind of work. Your latest score is saved on your profile.',
+        'The job-fit score is worked out by the system from your skills, your skills-check score, your preferred work setup, your location and your work experience. Your type of visual disability is not used in it.',
+        'The score is always shown with its reasons, to you and to the employer. It is a guide. A person at the employer, not the system, decides on every application.',
+      ],
+    },
+    {
       heading: 'Why we use your data',
       body: ['We use your data only to run the job portal:'],
       items: [
         'to create your account and sign you in;',
         'to show applicants the jobs that fit their skills, location and visual category;',
+        'to suggest kinds of work to an applicant, and to rank jobs for them by how well they fit;',
+        'to tell an employer which accommodations an applicant would ask for, so the two can discuss them;',
         'to share an applicant\'s resume with the employers they apply to;',
         'to let applicants and employers message each other and follow each application;',
         'to notify you about your applications and about new jobs that match you.',
@@ -69,7 +80,7 @@ const PRIVACY: LegalDoc = {
       heading: 'Who can see your data',
       body: [],
       items: [
-        'An employer sees your full profile, including your disability type and contact details, only after you apply to one of that employer\'s jobs.',
+        'An employer sees your full profile, including your disability type, contact details, skills-check scores, the accommodations you would ask for, and your job-fit score for that job, only after you apply to one of that employer\'s jobs.',
         'Other applicants cannot see your profile.',
         'Job posts and company names are shown to all applicants.',
         'Your data is stored with Supabase, a cloud database service. Its servers may be outside the Philippines.',

@@ -29,8 +29,18 @@ blindss/
 │   │
 │   ├── screens/                One file per page
 │   │   ├── auth/               Welcome guide, Sign in, Register (applicant, employer)
-│   │   ├── applicant/          Dashboard, Profile (resume), Jobs
+│   │   │   └── register/       Applicant registration, one file per step (account, work profile,
+│   │   │                       category, finish), plus the step list and the frame around them
+│   │   ├── applicant/          Dashboard, Profile (resume), Assessments, Jobs
+│   │   │   ├── dashboard/      My Assessment Scores card on the dashboard
+│   │   │   ├── profile/        The read-only resume (the edit form is ProfileScreen.tsx)
+│   │   │   └── assessments/    Shared by the Assessments page and registration
+│   │   │       ├── skills/     Skills check: intro, one question per page, result
+│   │   │       ├── CategoryList.tsx   Suggested kinds of work
+│   │   │       └── TakenChecks.tsx    Finished checks: score and Retake
 │   │   ├── employer/           Dashboard, Post a Job, Applicants board
+│   │   │   └── applicants/     What an employer reviews in the applicant dialog: job fit,
+│   │   │                       skills-check scores, accommodations
 │   │   └── shared/             Messages (both roles)
 │   │
 │   ├── components/             Pieces used by several screens
@@ -39,7 +49,8 @@ blindss/
 │   │   ├── legal/              Privacy Notice / Terms dialog, consent boxes at registration
 │   │   ├── nav/                Top navbar, notification bell, account menu
 │   │   ├── toast/              Pop-up messages ("Resume saved")
-│   │   └── ui/                 Form field, password box, error message, dialog, spinner
+│   │   └── ui/                 Form field, password box, error message, dialog, spinner, page card,
+│   │                           progress and score bars
 │   │
 │   ├── lib/                    Logic with no UI
 │   │   ├── a11y/
@@ -47,15 +58,20 @@ blindss/
 │   │   │   ├── screen-reader.ts      Built-in reader (F2 toggles it)
 │   │   │   ├── arrow-navigation.ts   Arrow-key movement between items
 │   │   │   └── braille.ts            Braille dot patterns for letters
+│   │   ├── assessment/
+│   │   │   ├── work-categories.ts    Kinds of work offered, why, and how they are suggested
+│   │   │   ├── question-bank.ts      The random draw of 10 and the weighted score
+│   │   │   └── questions/            The questions, one file per kind of work
 │   │   ├── api.ts              Everything that talks to Supabase
 │   │   ├── legal.ts            Privacy Notice and Terms text, and their versions
 │   │   ├── matching.ts         When a job matches an applicant (skills, location, visual category)
+│   │   ├── job-fit.ts          The 0–100 job-fit score, its reasons, and the ranking of jobs
 │   │   ├── resume.ts           Resume choices (education levels, assistive tech, …)
 │   │   ├── validation.ts       Required-field checks for forms
 │   │   ├── format.ts           Names, dates, stage colours
 │   │   └── toast.ts            Show a toast from anywhere
 │   │
-│   ├── hooks/                  React hooks (screen-change announcements, closing menus, reload on a notification)
+│   ├── hooks/                  React hooks (screen-change and step-change announcements, closing menus, reload on a notification)
 │   │
 │   └── styles/                 CSS, loaded in order by index.css
 │       ├── tokens.css          Brand colours and motion
@@ -88,6 +104,52 @@ blindss/
 | Saving or loading data | `src/lib/api.ts` |
 | The Privacy Notice or Terms wording | `src/lib/legal.ts` (raise the version when you do) |
 | Who gets told about a new job | `src/lib/matching.ts` |
+| How the job-fit score is worked out, or its weights | `src/lib/job-fit.ts` |
+| A skills-check question | `src/lib/assessment/questions/<kind-of-work>.ts` |
+| Add a kind of work | `src/lib/assessment/work-categories.ts`, then a questions file listed in `questions/index.ts` |
+| A step of applicant registration | `src/screens/auth/register/` (order and names in `steps.ts`) |
+
+## From registration to a job
+
+Applicant registration is one guided flow of five steps. The account is created at the
+last one, so nothing is stored about someone who stops part-way.
+
+The skills check can be skipped during registration and taken later from the Assessments
+page. To make it compulsory, set `check: true` in `REQUIRED_AT_REGISTRATION`
+(`src/screens/auth/register/steps.ts`): its Skip button then disappears. Separately, an
+employer can tick "Require the skills check to apply" on a job; applying to that job is
+then blocked until the applicant has taken that check.
+
+1. **Account and consent.** Full name, email, password; Privacy Notice and Terms, versions
+   recorded on the account. The email is checked for being free here, not at the end.
+2. **Skills and work preferences.** Disability type, skills, last job, location, work setup,
+   assistive technology, accommodations.
+3. **Suggested kinds of work**, from step 2, each with its reasons. The applicant picks one,
+   or skips.
+4. **Skills check.** Ten approved questions drawn at random for that kind of work; a
+   weighted score (basic 1, core 2, critical 3 points). Not timed.
+5. **Create the account.** A summary, then everything is saved and the applicant is signed in.
+
+After that:
+
+- **Job fit.** Skills 35, skills check 30, work setup 15, location 10, experience 10. Parts a
+  job does not use are dropped and the rest scaled to 100. Jobs are listed best fit first.
+- **Employer review.** The same score and reasons, every skills-check score, the minimum
+  they set, and the accommodations the applicant asked for, with a message to start that
+  conversation.
+- **Assessments page.** Scores, a retake of any check, or a check in another kind of work.
+
+A RAND-36 health survey was built and then removed, because its results were private to
+the applicant and fed nothing in matching. The code is kept in `_removed/health-survey/`.
+
+Rules that keep this fair, and must survive any change:
+
+- The type of visual disability never enters the job-fit score.
+- A score is never shown without its reasons, and it never blocks an application: a person
+  at the employer decides.
+- Assessments are untimed, so nobody is marked down for listening instead of reading.
+- A skills-check question is only drawn when `approved` is true. Have someone who does that
+  work check a new question before approving it.
 
 ## Keyboard
 

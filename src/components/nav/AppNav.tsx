@@ -15,7 +15,7 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
   const trackRef = useRef<HTMLDivElement>(null)
   const linkRefs = useRef(new Map<Screen, HTMLButtonElement>())
 
-  // Elevate the bar once content scrolls beneath it
+  // Elevate the bar once content scrolls beneath it (shadow only; see nav.css for why its size never changes)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
     onScroll()
@@ -24,7 +24,7 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
   }, [])
 
   // Slide a single pill under the active link; re-measure when the track resizes
-  // (font load, viewport change, compact-on-scroll padding).
+  // (font load, viewport change).
   useLayoutEffect(() => {
     const measure = () => {
       const el = linkRefs.current.get(active)

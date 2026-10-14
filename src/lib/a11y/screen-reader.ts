@@ -81,10 +81,24 @@ function describeElement(el: HTMLElement): string {
 
   if (tag === 'button' || role === 'button') return `Button: ${text || labelText || 'Button'}`
   if (tag === 'a') return `Link: ${text || labelText}`
+  if (tag === 'summary') return `${text}, ${(el.parentElement as HTMLDetailsElement | null)?.open ? 'expanded' : 'collapsed'}. Press Enter to ${(el.parentElement as HTMLDetailsElement | null)?.open ? 'close' : 'open'}.`
   if (/^h[1-6]$/.test(tag)) return `Heading: ${text}`
   if (tag === 'nav') return 'Navigation menu'
   if (labelText) return `${labelText}: ${text}`
   return text
+}
+
+/**
+ * The question a radio button or check box answers: its group's <legend>, given
+ * only when focus arrives from outside the group, so it is heard once and not
+ * again for every option.
+ */
+export function groupQuestion(el: HTMLElement, from: Element | null): string {
+  const type = (el as HTMLInputElement).type?.toLowerCase()
+  if (el.tagName !== 'INPUT' || (type !== 'radio' && type !== 'checkbox')) return ''
+  const group = el.closest('fieldset')
+  if (!group || (from && group.contains(from))) return ''
+  return group.querySelector('legend')?.textContent?.replace(/\s+/g, ' ').trim() || ''
 }
 
 function onFocus(e: FocusEvent) {
@@ -93,7 +107,8 @@ function onFocus(e: FocusEvent) {
   const el = e.target as HTMLElement
   if (!el || el.tagName === 'BODY' || el.tagName === 'HTML') return
   const desc = describeElement(el)
-  if (desc) speak(desc)
+  const question = groupQuestion(el, e.relatedTarget as Element | null)
+  if (desc) speak(question ? `${question}. ${desc}` : desc)
 }
 
 // F2 alone toggles the reader: a single key, no combination to hold.

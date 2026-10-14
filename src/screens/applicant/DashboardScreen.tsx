@@ -4,16 +4,19 @@ import { stageColor, timeAgo } from '@/lib/format'
 import { toast } from '@/lib/toast'
 import { useUpdateTick } from '@/hooks/useUpdateTick'
 import { Spinner } from '@/components/ui/Spinner'
-import type { Conversation, Job, Screen, User } from '@/types'
+import type { ApplicantProfile, Conversation, Job, Screen, User } from '@/types'
+import { ScoresCard } from './dashboard/ScoresCard'
 
 type MyApplication = { job: Job; stage: string }
 
-export function DashboardScreen({ user, onNavigate, onOpenJob }: {
+export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenCheck }: {
   user: User; onNavigate: (s: Screen) => void; onOpenJob: (jobId: string) => void
+  onOpenCheck: (categoryId: string) => void
 }) {
   const [jobs, setJobs] = useState<Job[] | null>(null)
   const [apps, setApps] = useState<MyApplication[] | null>(null)
   const [convCount, setConvCount] = useState(0)
+  const [profile, setProfile] = useState<ApplicantProfile | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
 
   // a notification just arrived: reload so the lists below match what it said
@@ -22,10 +25,11 @@ export function DashboardScreen({ user, onNavigate, onOpenJob }: {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const [allJobs, appliedIds, convs] = await Promise.all([
+      const [allJobs, appliedIds, convs, mine_] = await Promise.all([
         api.getJobs().catch(() => [] as Job[]),
         api.getAppliedJobs(user.id).catch(() => [] as string[]),
         api.getConversations(user.id).catch(() => [] as Conversation[]),
+        api.getProfile(user.id).catch(() => null),
       ])
       const byId = new Map(allJobs.map((j: Job) => [j.id, j]))
       const mine = await Promise.all(appliedIds.filter(id => byId.has(id)).map(async id => ({
@@ -36,6 +40,7 @@ export function DashboardScreen({ user, onNavigate, onOpenJob }: {
       setJobs(allJobs)
       setApps(mine.reverse())
       setConvCount(convs.length)
+      setProfile(mine_)
     })()
     return () => { cancelled = true }
   }, [user.id, reload])
@@ -75,6 +80,8 @@ export function DashboardScreen({ user, onNavigate, onOpenJob }: {
         </div>
         <p className="text-xs">Arrow keys move between tiles and lists · ↑ reach nav bar · <strong>Enter</strong> to open</p>
       </header>
+
+      {profile && <ScoresCard profile={profile} onOpen={() => onNavigate('assessments')} onRetake={onOpenCheck} />}
 
       <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-4">
         {tiles.map(t => (
