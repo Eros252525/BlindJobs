@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import { categoryById } from '@/lib/assessment/work-categories'
 import { fitLabel, rankJobs } from '@/lib/job-fit'
@@ -9,6 +9,8 @@ import { Spinner } from '@/components/ui/Spinner'
 import type { ApplicantProfile, Job, User } from '@/types'
 
 const isOpen = (j: Job) => (j.status || 'Active') === 'Active'
+// Below Tailwind's md breakpoint the list and the details take turns on screen
+const isNarrow = () => window.matchMedia('(max-width: 767px)').matches
 
 export function JobsScreen({ user, initialJobId, onOpenCheck }: {
   user: User; initialJobId?: string | null
@@ -22,6 +24,28 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
   const [applyMsg, setApplyMsg] = useState('')
   const [profile, setProfile] = useState<ApplicantProfile | null>(null)
   const [appliedIds, setAppliedIds] = useState<string[]>([])
+  // Phones: true while a job's details fill the screen in place of the list
+  const [showDetail, setShowDetail] = useState(false)
+  const detailRef = useRef<HTMLElement>(null)
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null)
+
+  // A newly picked job is read from its top, not from where the last one was scrolled to
+  useEffect(() => { detailRef.current?.scrollTo({ top: 0 }) }, [selected?.id])
+
+  const openJob = (j: Job) => {
+    setSelected(j); setApplyMsg('')
+    if (!isNarrow()) return
+    setShowDetail(true)
+    window.scrollTo({ top: 0 })
+    requestAnimationFrame(() => detailHeadingRef.current?.focus())
+  }
+
+  // Back to the list on a phone, onto the job that was open
+  const backToList = () => {
+    setShowDetail(false)
+    const id = selected?.id
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-job-id="${id}"]`)?.focus())
+  }
 
   useEffect(() => {
     Promise.all([
@@ -36,6 +60,8 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
       setProfile(p)
       // Open the job picked on the dashboard; otherwise the best fit so the detail pane isn't empty
       setSelected(visible.find(j => j.id === initialJobId) ?? rankJobs(visible, p)[0]?.job ?? null)
+      // A job opened from the dashboard or a notification goes straight to its details on a phone
+      if (initialJobId && visible.some(j => j.id === initialJobId) && isNarrow()) setShowDetail(true)
     }).catch(() => {})
   }, [user.id, initialJobId])
 
@@ -72,9 +98,10 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
   const matchesDisability = (cat: string) => cat.toLowerCase() === userDisability.toLowerCase()
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row md:overflow-hidden">
+    // From tablet width up, the list and the details each scroll on their own
+    <div className="flex-1 flex flex-col md:flex-row md:min-h-0 md:overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-full md:w-72 xl:w-96 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
+      <aside className={`w-full md:w-72 xl:w-96 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex-col ${showDetail ? 'hidden md:flex' : 'flex'}`}>
         <div className="px-4 pt-5 pb-3">
           <h1 className="text-base font-bold text-[#1a7a3c] mb-3">Job Listings PH</h1>
           <div className="flex items-center border border-gray-500 rounded-md px-3 py-2 gap-2 bg-white">
@@ -104,7 +131,7 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
           {filtered.map(({ job: j, fit }, i) => {
             const isSelected = selected?.id === j.id
             return (
-              <button key={j.id} onClick={() => { setSelected(j); setApplyMsg('') }} aria-pressed={isSelected}
+              <button key={j.id} data-job-id={j.id} onClick={() => openJob(j)} aria-pressed={isSelected}
                 data-speak={`Number ${i + 1}. ${j.jobTitle} at ${j.companyName}. ${fit.eligible ? `${fitLabel(fit.score)}, ${fit.score} out of 100` : 'Limited to other visual categories'}${appliedIds.includes(j.id) ? '. Applied' : ''}`}
                 className={`w-full text-left px-3 py-3 rounded-lg mb-2 transition-colors border ${isSelected ? 'border-[#1a7a3c] bg-green-50' : 'border-transparent hover:bg-gray-50'}`}>
                 <div className="flex items-start gap-2">
@@ -136,7 +163,15 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
       </aside>
 
       {/* Detail panel */}
-      <section aria-label="Job details" className="flex-1 overflow-y-auto">
+      <section ref={detailRef} aria-label="Job details" className={`flex-1 md:overflow-y-auto ${showDetail ? 'block' : 'hidden md:block'}`}>
+        {showDetail && (
+          <div className="md:hidden px-4 pt-4">
+            <button type="button" onClick={backToList}
+              className="min-h-11 px-4 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 font-semibold rounded-md text-sm">
+              <span aria-hidden="true">← </span>Back to job list
+            </button>
+          </div>
+        )}
         {!selected ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-sm text-white">{jobs.length === 0 ? 'No jobs posted yet.' : 'Select a job to view details.'}</p>
@@ -148,7 +183,7 @@ export function JobsScreen({ user, initialJobId, onOpenCheck }: {
               <div className="flex items-center gap-3">
                 <span aria-hidden="true" className="text-2xl">⌨️</span>
                 <div>
-                  <h2 className="font-bold text-gray-900 text-lg">{selected.jobTitle}</h2>
+                  <h2 ref={detailHeadingRef} tabIndex={-1} className="font-bold text-gray-900 text-lg focus:outline-none">{selected.jobTitle}</h2>
                   <p className="text-sm text-gray-600">{selected.companyName} • {selected.location || 'Remote / Work from Home'}</p>
                 </div>
               </div>

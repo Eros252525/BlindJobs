@@ -68,7 +68,10 @@ export default function App() {
   const isLoggedIn = isApplicant || isEmployer
 
   return (
-    <div className="min-h-screen flex flex-col">
+    // Signed in, from tablet width up, the page is exactly the window: the navbar stays
+    // put and only <main> (or a screen's own panes) scrolls, so a long list never
+    // carries the navbar or the other half of a two-pane screen out of view.
+    <div className={`min-h-screen flex flex-col ${isLoggedIn ? 'md:h-dvh md:overflow-hidden' : ''}`}>
       <ToastContainer />
       {/* WCAG 2.4.1: let keyboard users jump past the navbar on every portal screen */}
       {isLoggedIn && <a href="#main-content" className="skip-link">Skip to main content</a>}
@@ -81,7 +84,7 @@ export default function App() {
       {screen === 'register-employer' && <RegisterEmployerScreen onLogin={handleLogin} onBack={() => setScreen('login')} />}
 
       {isLoggedIn && (
-        <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 focus:outline-none">
+        <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 md:overflow-y-auto focus:outline-none">
         {screen === 'dashboard' && user && <DashboardScreen user={user} onNavigate={navigate} onOpenJob={openJob} onOpenCheck={openCheck} />}
         {screen === 'profile' && user && <ProfileScreen user={user} />}
         {screen === 'assessments' && user && <AssessmentsScreen user={user} onNavigate={navigate} initialCategory={checkFocus} />}

@@ -16,11 +16,13 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
   const linkRefs = useRef(new Map<Screen, HTMLButtonElement>())
 
   // Elevate the bar once content scrolls beneath it (shadow only; see nav.css for why its size never changes)
+  // The page scrolls on phones; from tablet width up <main> does (see App.tsx). A
+  // capturing listener hears both, since scroll events do not bubble.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8)
+    const onScroll = () => setScrolled(window.scrollY > 8 || (document.getElementById('main-content')?.scrollTop ?? 0) > 8)
     onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true })
+    return () => document.removeEventListener('scroll', onScroll, { capture: true })
   }, [])
 
   // Slide a single pill under the active link; re-measure when the track resizes
