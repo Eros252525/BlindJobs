@@ -1,104 +1,128 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
+import { categoryById, type WorkCategoryId } from '@/lib/assessment/work-categories'
 import { NO_CONSENT } from '@/lib/legal'
-import { focusFirst, missingFields, missingMessage } from '@/lib/validation'
-import { AuthShell } from '@/components/auth/AuthShell'
-import { ConsentFields, consentMessage, untickedConsent } from '@/components/legal/ConsentFields'
-import { ErrorMsg } from '@/components/ui/ErrorMsg'
-import { FormField } from '@/components/ui/FormField'
-import { GmailUsernameInput } from '@/components/ui/GmailUsernameInput'
-import { PasswordInput } from '@/components/ui/PasswordInput'
-import { Spinner } from '@/components/ui/Spinner'
-import type { User } from '@/types'
+import { useStepFocus } from '@/hooks/useStepFocus'
+import { SkillsCheck } from '@/screens/applicant/assessments/skills/SkillsCheck'
+import type { ApplicantProfile, User } from '@/types'
+import { AccountStep } from './register/AccountStep'
+import { CategoryStep } from './register/CategoryStep'
+import { FinishStep } from './register/FinishStep'
+import { StepFrame } from './register/StepFrame'
+import { EMPTY_WORK_PROFILE, WorkProfileStep, type WorkProfile } from './register/WorkProfileStep'
+import { REQUIRED_AT_REGISTRATION, STEPS, STEP_NAMES, stepNumber, withGmail, type AccountForm, type CheckSummary, type Step } from './register/steps'
 
-const ERROR_ID = 'reg-app-error'
-
+/**
+ * Applicant registration as one guided flow: account details, work profile,
+ * a kind of work, ten questions, then the account is created.
+ * This file holds what the applicant has entered so far and moves between the
+ * steps; each step is its own file in ./register/.
+ */
 export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User) => void; onBack: () => void }) {
-  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', suffix: '', emailUsername: '', mobile: '', gender: '', disabilityType: 'Legally Blind', password: '' })
+  const [step, setStep] = useState<Step>('account')
+  const [form, setForm] = useState<AccountForm>({ fullName: '', email: '', password: '' })
   const [consent, setConsent] = useState(NO_CONSENT)
+  const [work, setWork] = useState<WorkProfile>(EMPTY_WORK_PROFILE)
+  const [categoryId, setCategoryId] = useState<WorkCategoryId | null>(null)
+  const [check, setCheck] = useState<CheckSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [invalid, setInvalid] = useState<Set<string>>(new Set())
+  // Set once the account exists, so a retry after a failed save does not register twice
+  const created = useRef<User | null>(null)
 
-  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
-  // aria-invalid + a pointer to the error message, only on fields that failed
-  const fieldState = (id: string) => ({ invalid: invalid.has(id), describedBy: invalid.has(id) ? ERROR_ID : undefined })
+  const go = (s: Step) => { setError(''); setStep(s) }
 
-  const handleRegister = async (e: FormEvent) => {
-    e.preventDefault()
+  // The work profile and skills check move focus themselves; this covers the other steps.
+  const headingRef = useStepFocus<HTMLHeadingElement>(step, `Step ${stepNumber(step)} of ${STEPS.length}. ${STEP_NAMES[step]}.`)
+
+  // Nothing is saved until the last step, so warn before a reload or a closed tab throws the answers away
+  useEffect(() => {
+    if (step === 'account') return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [step])
+
+  const emailAddress = withGmail(form.email)
+  const category = categoryById(categoryId)
+
+  const createAccount = async () => {
     if (loading) return
-    // Same required set as the profile screen, so the two never disagree.
-    const missing = missingFields([
-      { id: 'reg-first', label: 'First name', value: form.firstName },
-      { id: 'reg-last', label: 'Last name', value: form.lastName },
-      { id: 'reg-email', label: 'Gmail username', value: form.emailUsername },
-      { id: 'reg-mobile', label: 'Mobile number', value: form.mobile },
-      { id: 'reg-disability', label: 'Disability type', value: form.disabilityType },
-      { id: 'reg-password', label: 'Password', value: form.password },
-    ])
-    // consent is checked once the fields are complete, so the error names one thing at a time
-    const unticked = missing.length ? [] : untickedConsent('reg-consent', consent)
-    setInvalid(new Set([...missing, ...unticked].map(f => f.id)))
-    if (missing.length) { setError(missingMessage(missing)); focusFirst(missing); return }
-    if (unticked.length) { setError(consentMessage(unticked)); focusFirst(unticked); return }
     setError(''); setLoading(true)
     try {
-      const user = await api.register({ role: 'applicant', ...form, consent })
+      if (!created.current) {
+        // The profile keeps first and last name apart: the last word is the last name,
+        // and the profile screen lets the applicant correct the split.
+        const words = form.fullName.trim().split(/\s+/)
+        const lastName = words.length > 1 ? words.pop()! : ''
+        created.current = await api.register({
+          role: 'applicant', firstName: words.join(' '), lastName,
+          emailUsername: emailAddress, password: form.password, consent,
+          disabilityType: work.disabilityType,
+          skills: [...work.skills, '', '', ''].slice(0, 3), // the profile screen edits three slots
+        }) as User
+      }
+      const user = created.current
+      await api.updateProfile(user.id, {
+        location: work.location.trim(), workSetup: work.workSetup, assistiveTech: work.assistiveTech, accommodations: work.accommodations,
+        experience: work.jobTitle.trim() ? [{ title: work.jobTitle.trim(), company: work.company.trim(), period: '' }] : [],
+      })
+      if (check && categoryId) await api.saveCategoryScore(user.id, categoryId, check)
       onLogin(user)
-    } catch (e: any) { setError(e.message) }
-    finally { setLoading(false) }
+    } catch (e: any) {
+      setError(created.current
+        ? `Your account was created, but some answers were not saved: ${e.message}. Choose Create my account to try again.`
+        : e.message)
+    } finally { setLoading(false) }
   }
 
-  const first = fieldState('reg-first'), last = fieldState('reg-last'), mobile = fieldState('reg-mobile'), disability = fieldState('reg-disability')
+  if (step === 'account') {
+    return <AccountStep headingRef={headingRef} form={form} consent={consent} onForm={setForm} onConsent={setConsent}
+      onContinue={() => go('profile')} onBack={onBack} />
+  }
+
+  if (step === 'profile') {
+    return (
+      <StepFrame step={step} onPrev={() => go('account')}>
+        <WorkProfileStep value={work} onChange={setWork} onContinue={() => go('category')} />
+      </StepFrame>
+    )
+  }
+
+  // What the later steps know about the applicant so far, shaped like a saved profile
+  const draft: ApplicantProfile = {
+    skills: work.skills, workSetup: work.workSetup, assistiveTech: work.assistiveTech,
+    experience: work.jobTitle.trim() ? [{ title: work.jobTitle, company: work.company, period: '' }] : [],
+    categoryScores: check && categoryId ? { [categoryId]: { ...check, takenAt: new Date().toISOString(), attempts: 1 } } : undefined,
+  }
+
+  if (step === 'check' && category) {
+    return (
+      <StepFrame step={step}>
+        <SkillsCheck category={category} previous={draft.categoryScores?.[category.id]} onResult={setCheck}
+          onBack={() => go('category')} onNext={() => go('finish')}
+          labels={{ back: 'Choose a different kind of work', next: 'Continue' }} />
+      </StepFrame>
+    )
+  }
+
+  // without a finished check, this step is only reachable when the check may be skipped
+  if (step === 'finish' && (check || !REQUIRED_AT_REGISTRATION.check)) {
+    return (
+      <StepFrame step={step} onPrev={() => go('category')}>
+        <FinishStep headingRef={headingRef} name={form.fullName.trim()} email={emailAddress} work={work}
+          category={check ? category : undefined} check={check ?? undefined} loading={loading} error={error} onCreate={createAccount} />
+      </StepFrame>
+    )
+  }
 
   return (
-    <AuthShell width="max-w-md" braille showcase="Register as applicant">
-      <h1 className="text-3xl font-bold text-gray-900">Register as applicant</h1>
-      <form className="mt-6 space-y-5" onSubmit={handleRegister} noValidate>
-        <FormField id="reg-first" label="First name" required>
-          <input id="reg-first" className="input" type="text" autoComplete="given-name" required value={form.firstName} onChange={(e) => set('firstName', e.target.value)}
-            aria-invalid={first.invalid} aria-describedby={first.describedBy} />
-        </FormField>
-        <FormField id="reg-middle" label="Middle name">
-          <input id="reg-middle" className="input" type="text" autoComplete="additional-name" value={form.middleName} onChange={(e) => set('middleName', e.target.value)} />
-        </FormField>
-        <FormField id="reg-last" label="Last name" required>
-          <input id="reg-last" className="input" type="text" autoComplete="family-name" required value={form.lastName} onChange={(e) => set('lastName', e.target.value)}
-            aria-invalid={last.invalid} aria-describedby={last.describedBy} />
-        </FormField>
-        <FormField id="reg-suffix" label="Suffix, e.g. Jr or III">
-          <input id="reg-suffix" className="input" type="text" autoComplete="honorific-suffix" value={form.suffix} onChange={(e) => set('suffix', e.target.value)} />
-        </FormField>
-        <FormField id="reg-email" label="Gmail username" required>
-          <GmailUsernameInput id="reg-email" value={form.emailUsername} onChange={(v) => set('emailUsername', v)} {...fieldState('reg-email')} />
-        </FormField>
-        <FormField id="reg-mobile" label="Mobile number" required>
-          <input id="reg-mobile" className="input" type="tel" autoComplete="tel" required value={form.mobile} onChange={(e) => set('mobile', e.target.value)}
-            aria-invalid={mobile.invalid} aria-describedby={mobile.describedBy} />
-        </FormField>
-        <FormField id="reg-gender" label="Gender">
-          <select id="reg-gender" className="input" autoComplete="sex" value={form.gender} onChange={(e) => set('gender', e.target.value)}>
-            <option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option>
-          </select>
-        </FormField>
-        <FormField id="reg-disability" label="Disability type" required>
-          <select id="reg-disability" className="input" required value={form.disabilityType} onChange={(e) => set('disabilityType', e.target.value)}
-            aria-invalid={disability.invalid} aria-describedby={disability.describedBy}>
-            <option value="">Select disability type</option><option>Legally Blind</option><option>Partially Blind</option><option>Totally Blind</option>
-          </select>
-        </FormField>
-        <FormField id="reg-password" label="Password" required>
-          <PasswordInput id="reg-password" value={form.password} onChange={(v) => set('password', v)} autoComplete="new-password" {...fieldState('reg-password')} />
-        </FormField>
-
-        <ConsentFields idPrefix="reg-consent" role="applicant" value={consent} onChange={setConsent} invalid={invalid} errorId={ERROR_ID} />
-        <ErrorMsg id={ERROR_ID} msg={error} />
-
-        <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-70" disabled={loading} aria-busy={loading}>
-          {loading ? <><Spinner /><span className="sr-only">Creating your account</span></> : 'Complete registration'}
-        </button>
-      </form>
-      <button type="button" className="auth-link block mx-auto mt-5" onClick={onBack}>Back to sign in</button>
-    </AuthShell>
+    <StepFrame step="category" onPrev={() => go('profile')}>
+      <CategoryStep headingRef={headingRef} draft={draft}
+        finished={category && check ? { category, check } : undefined}
+        onPick={(id) => { if (id !== categoryId) setCheck(null); setCategoryId(id); go('check') }}
+        onKeepScore={() => go('finish')}
+        onSkip={REQUIRED_AT_REGISTRATION.check ? undefined : () => { setCheck(null); setCategoryId(null); go('finish') }} />
+    </StepFrame>
   )
 }

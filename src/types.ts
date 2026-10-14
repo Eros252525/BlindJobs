@@ -2,12 +2,16 @@ export type Role = 'applicant' | 'employer'
 
 export type Screen =
   | 'intro' | 'login' | 'register-applicant' | 'register-employer'
-  | 'dashboard' | 'profile' | 'jobs' | 'messages'
+  | 'dashboard' | 'profile' | 'assessments' | 'jobs' | 'messages'
   | 'emp-dashboard' | 'emp-post-job' | 'emp-applicants' | 'emp-messages'
 
 export interface User { id: string; role: Role; email: string; name: string }
 
-export interface Job { id: string; employerId: string; companyName: string; jobTitle: string; skills: string; location: string; salary: string; jobType: string; experienceLevel: string; description: string; createdAt: string; status?: string; vacancies?: string; disabilityCategories?: string[]; listed?: boolean; deleted?: boolean }
+export interface Job { id: string; employerId: string; companyName: string; jobTitle: string; skills: string; location: string; salary: string; jobType: string; experienceLevel: string; description: string; createdAt: string; status?: string; vacancies?: string; disabilityCategories?: string[]; listed?: boolean; deleted?: boolean
+  // The kind of work (a WorkCategoryId) and the lowest skills-check score the employer asks for in it
+  workCategory?: string; minCategoryScore?: number
+  // True when the employer will only take applications from people who have taken that skills check
+  requireCheck?: boolean }
 
 export interface WorkExperience { title: string; company: string; period: string }
 
@@ -22,10 +26,16 @@ export interface ApplicantProfile {
   educationLevel?: string; school?: string; trainings?: string
   experience?: WorkExperience[]
   assistiveTech?: string[]; workSetup?: string[]; languages?: string[]
+  // What the applicant asks an employer to arrange (choices in resume.ts)
+  accommodations?: string[]
+  // Latest skills-check result per work category, keyed by WorkCategoryId
+  categoryScores?: Record<string, CategoryScore>
   updatedAt?: string
 }
 
-export interface Applicant { applicantId: string; jobId: string; jobTitle: string; stage: string; appliedAt: string; profile: ApplicantProfile | null }
+export interface CategoryScore { score: number; correct: number; total: number; takenAt: string; attempts: number }
+
+export interface Applicant { applicantId: string; jobId: string; jobTitle: string; stage: string; appliedAt: string; profile: ApplicantProfile | null; job?: Job | null }
 
 export interface Conversation { id: string; applicantId: string; employerId: string; applicantName: string; employerName: string; jobTitle: string; jobId?: string }
 

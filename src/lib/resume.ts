@@ -17,6 +17,22 @@ export const ASSISTIVE_TECH = [
 
 export const WORK_SETUPS = ['Remote', 'Hybrid', 'On-site']
 
+// What an applicant may ask an employer to arrange. Taken from the Job
+// Accommodation Network's guidance for employees who are blind or have low
+// vision (askjan.org), in the words an employer would act on.
+export const ACCOMMODATIONS = [
+  'Screen reader software on the work computer',
+  'Screen magnifier or a large monitor',
+  'Braille display',
+  'Documents and training materials in accessible digital form',
+  'A reader or assistant for printed material',
+  'Orientation to the workplace and its routes',
+  'Flexible hours to fit my commute',
+  'Work from home',
+  'Extra time to learn the tools used',
+  'Adjusted lighting or reduced glare',
+]
+
 export const LANGUAGES = ['Filipino', 'English', 'Cebuano', 'Ilocano', 'Hiligaynon', 'Bicolano', 'Waray', 'Kapampangan']
 
 export const MAX_EXPERIENCE = 3
@@ -33,6 +49,7 @@ export function resumeSections(p: ApplicantProfile): { label: string; done: bool
     { label: 'Work experience', done: !!p.experience?.some(x => x.title.trim()) },
     { label: 'Assistive technology', done: !!p.assistiveTech?.length },
     { label: 'Work setup', done: !!p.workSetup?.length },
+    { label: 'Workplace accommodations', done: !!p.accommodations?.length },
     { label: 'Languages', done: !!p.languages?.length },
   ]
 }
