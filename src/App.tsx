@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import * as sr from './lib/a11y/screen-reader'
-import { useRemoteControl } from './lib/a11y/arrow-navigation'
 import { useScreenChangeA11y } from './hooks/useScreenChangeA11y'
 import { APPLICANT_SCREENS, EMPLOYER_SCREENS } from './constants'
+import { loadSession, saveSession } from './lib/session'
 import type { Screen, User } from './types'
 import { ToastContainer } from './components/toast/ToastContainer'
 import { AccessibilityBar } from './components/a11y/AccessibilityBar'
@@ -14,29 +14,30 @@ import { RegisterApplicantScreen } from './screens/auth/RegisterApplicantScreen'
 import { RegisterEmployerScreen } from './screens/auth/RegisterEmployerScreen'
 import { DashboardScreen } from './screens/applicant/DashboardScreen'
 import { ProfileScreen } from './screens/applicant/ProfileScreen'
+import { AssessmentsScreen } from './screens/applicant/AssessmentsScreen'
 import { JobsScreen } from './screens/applicant/JobsScreen'
 import { MessagesScreen } from './screens/shared/MessagesScreen'
 import { EmpDashboardScreen } from './screens/employer/EmpDashboardScreen'
 import { EmpPostJobScreen } from './screens/employer/EmpPostJobScreen'
 import { EmpApplicantsScreen } from './screens/employer/EmpApplicantsScreen'
 
-export default function App() {
-  const [screen, setScreen] = useState<Screen>('intro')
-  const [user, setUser] = useState<User | null>(null)
-  const [srEnabled, setSrEnabled] = useState(false)
+// Read once, before the first render, so a reload never flashes the welcome screen
+const restored = loadSession()
 
-  useRemoteControl()
+export default function App() {
+  const [screen, setScreen] = useState<Screen>(restored.screen)
+  const [user, setUser] = useState<User | null>(restored.user)
+  const [srEnabled, setSrEnabled] = useState(false)
 
   useEffect(() => {
     const cleanup = sr.init(setSrEnabled)
     return cleanup
   }, [])
 
-  useEffect(() => {
-    window.__srEnabled = srEnabled
-  }, [srEnabled])
-
   useScreenChangeA11y(screen)
+
+  // Remember where the user is, so a reload comes back here (see lib/session.ts)
+  useEffect(() => { saveSession({ user, screen }) }, [user, screen])
 
   const handleLogin = (u: User) => {
     setUser(u)
@@ -79,8 +80,9 @@ export default function App() {
         <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 focus:outline-none">
         {screen === 'dashboard' && user && <DashboardScreen user={user} onNavigate={navigate} onOpenJob={openJob} />}
         {screen === 'profile' && user && <ProfileScreen user={user} />}
-        {screen === 'jobs' && user && <JobsScreen user={user} initialJobId={jobFocus} />}
-        {screen === 'messages' && user && <MessagesScreen user={user} />}
+        {screen === 'assessments' && user && <AssessmentsScreen user={user} />}
+        {screen === 'jobs' && user && <JobsScreen user={user} initialJobId={jobFocus} onGoToProfile={() => navigate('profile')} onGoToSurvey={() => navigate('assessments')} />}
+        {screen === 'messages' && user && <MessagesScreen user={user} onOpenJob={openJob} onFindJobs={() => navigate('jobs')} />}
 
         {screen === 'emp-dashboard' && user && <EmpDashboardScreen user={user} onNavigate={navigate} onViewCandidates={openCandidates} />}
         {screen === 'emp-post-job' && user && <EmpPostJobScreen user={user} onNavigate={navigate} />}

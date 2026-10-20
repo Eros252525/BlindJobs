@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { groupQuestion } from './screen-reader'
 
 declare global {
   interface Window {
@@ -48,14 +49,15 @@ function findLabel(el: HTMLElement): string {
   return ''
 }
 
-function readEl(el: HTMLElement) {
+function readEl(el: HTMLElement, from: Element | null = null) {
   const tag = el.tagName
   const type = (el as HTMLInputElement).type?.toLowerCase()
 
   if (tag === 'INPUT' && (type === 'radio' || type === 'checkbox')) {
     const byId = el.getAttribute('aria-labelledby')
     const label = (byId && document.getElementById(byId)?.textContent?.trim()) || findLabel(el)
-    srSpeak(`${label}, ${type === 'radio' ? 'radio button' : 'check box'}, ${(el as HTMLInputElement).checked ? 'checked' : 'not checked'}`)
+    const question = groupQuestion(el, from)
+    srSpeak(`${question ? `${question}. ` : ''}${label}, ${type === 'radio' ? 'radio button' : 'check box'}, ${(el as HTMLInputElement).checked ? 'checked' : 'not checked'}`)
     return
   }
 
@@ -82,7 +84,7 @@ function readEl(el: HTMLElement) {
   const text =
     el.getAttribute('data-speak') ||
     el.getAttribute('aria-label') ||
-    (['BUTTON', 'A', 'H1', 'H2', 'H3', 'H4', 'SPAN'].includes(tag)
+    (['BUTTON', 'A', 'SUMMARY', 'H1', 'H2', 'H3', 'H4', 'SPAN'].includes(tag)
       ? el.textContent?.trim()
       : '') ||
     ''
@@ -104,6 +106,7 @@ const FOCUSABLE_SEL =
   'input:not([disabled]):not([tabindex="-1"]),' +
   'select:not([disabled]):not([tabindex="-1"]),' +
   'textarea:not([disabled]):not([tabindex="-1"]),' +
+  'summary:not([tabindex="-1"]),' +
   '[tabindex]:not([tabindex="-1"]):not([disabled])'
 
 // While a modal is open, arrows stay inside it instead of wandering behind it
@@ -126,13 +129,14 @@ function getAllFocusable(): HTMLElement[] {
 
 function moveTo(el: HTMLElement | null) {
   if (!el) return
+  const from = document.activeElement
   window.__remoteNavFocusing = true
   el.focus({ preventScroll: true })
   // 'nearest' is a no-op when already fully visible, and also reveals elements
   // clipped inside inner scroll areas (lists, panels). The sticky navbar is
   // accounted for by `scroll-padding-top` on <html>.
   el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
-  readEl(el)
+  readEl(el, from)
   setTimeout(() => { window.__remoteNavFocusing = false }, 250)
 }
 

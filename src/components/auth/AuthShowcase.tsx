@@ -94,7 +94,7 @@ export function AuthShowcase({ heading }: { heading: string }) {
       </div>
 
       <ul className="auth-showcase-points">
-        <li><span aria-hidden="true">⌨</span>Every action works with Tab, the arrow keys and Enter.</li>
+        <li><span aria-hidden="true">⌨</span>Every action works with Tab and Enter.</li>
         <li><span aria-hidden="true">🔊</span>Press F2 to hear the focused item with the built-in reader.</li>
         <li><span aria-hidden="true">⠃</span>Errors name the missing field and take you straight to it.</li>
       </ul>

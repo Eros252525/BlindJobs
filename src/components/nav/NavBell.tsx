@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import { timeAgo } from '@/lib/format'
 import { getOpenConversation } from '@/lib/open-conversation'
+import * as sr from '@/lib/a11y/screen-reader'
 import { toast } from '@/lib/toast'
-import { APPLICATION_UPDATE_EVENT } from '@/constants'
+import { APPLICATION_UPDATE_EVENT, READ_STATE_EVENT } from '@/constants'
 import { useDismiss } from '@/hooks/useDismiss'
 import type { AppNotification, Conversation, Screen, UnreadMessage } from '@/types'
 
@@ -15,6 +16,11 @@ export function NavBell({ userId, onNavigate, msgScreen, updatesScreen, onOpenJo
   const [updates, setUpdates] = useState<AppNotification[]>([])
   const [open, setOpen] = useState(false)
   const [convs, setConvs] = useState<Conversation[]>([])
+  // What screen readers hear when something new arrives. A visually hidden live
+  // region instead of a pop-up box: sighted users have the badge on the bell.
+  const [spoken, setSpoken] = useState('')
+  const [marking, setMarking] = useState(false)
+  const [refreshTick, setRefreshTick] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
@@ -29,8 +35,9 @@ export function NavBell({ userId, onNavigate, msgScreen, updatesScreen, onOpenJo
   useEffect(() => {
     let live = true
     let firstLoad = true
-    // A badge on the bell is silent, so each new message or update is also sent as a
-    // toast (live region + built-in reader). Ids are kept so it is said once, not every poll.
+    let quiet = true
+    // A badge on the bell is silent, so each new message or update is also announced
+    // to screen readers (live region + built-in reader). Ids are kept so it is said once, not every poll.
     const announced = new Set<string>()
     const unsaid = <T extends { id: string }>(list: T[]) => {
       const fresh = list.filter(x => !announced.has(x.id))
@@ -61,17 +68,22 @@ export function NavBell({ userId, onNavigate, msgScreen, updatesScreen, onOpenJo
         if (fresh.length && !firstLoad) window.dispatchEvent(new Event(APPLICATION_UPDATE_EVENT))
         firstLoad = false
       }
-      // one toast, so a message and an update arriving together are both heard
-      if (say.length) toast(say.join(' '), 'info')
+      // one announcement, so a message and an update arriving together are both heard;
+      // nothing on the first check after sign-in, when everything unread would be read out at once
+      if (say.length && !quiet) { const text = say.join(' '); setSpoken(text); sr.announce(text) }
+      quiet = false
     }
     refresh()
     const t = setInterval(refresh, 15000)
-    return () => { live = false; clearInterval(t) }
-  }, [userId])
+    const onReadElsewhere = () => { refresh() }
+    window.addEventListener(READ_STATE_EVENT, onReadElsewhere)
+    return () => { live = false; clearInterval(t); window.removeEventListener(READ_STATE_EVENT, onReadElsewhere) }
+  }, [userId, refreshTick])
 
   useEffect(() => {
     if (!open) return
-    api.getConversations(userId).then(setConvs).catch(() => {})
+    // the inbox, not every conversation: one the user deleted is not listed here either
+    api.getInbox(userId).then(setConvs).catch(() => {})
     // Updates count as read once the panel closes, so "New" stays put while it is open
     return () => {
       const unreadIds = updatesRef.current.filter(n => !n.read).map(n => n.id)
@@ -80,6 +92,22 @@ export function NavBell({ userId, onNavigate, msgScreen, updatesScreen, onOpenJo
       setUpdates(list => list.map(n => ({ ...n, read: true })))
     }
   }, [open, userId])
+
+  const markAllRead = async () => {
+    setMarking(true)
+    try {
+      const ids = updates.filter(n => !n.read).map(n => n.id)
+      await Promise.all([
+        ids.length ? api.markNotificationsRead(userId, ids) : null,
+        msgCount ? api.markAllConversationsRead(userId) : null,
+      ])
+      setUpdates(list => list.map(n => ({ ...n, read: true })))
+      setMsgCount(0)
+      setSpoken('All notifications and messages marked as read.')
+      sr.announce('All notifications and messages marked as read.')
+    } catch (e: any) { toast(`Could not mark them as read: ${e.message}`, 'error') }
+    finally { setMarking(false); setRefreshTick(t => t + 1) }
+  }
 
   const handleGoToMessages = () => { setOpen(false); onNavigate(msgScreen) }
   // A matched job opens ready to apply, and a new application opens that job's
@@ -92,6 +120,7 @@ export function NavBell({ userId, onNavigate, msgScreen, updatesScreen, onOpenJo
 
   return (
     <div ref={ref} className="relative">
+      <p role="status" className="sr-only">{spoken}</p>
       <button data-popover-trigger onClick={() => setOpen(o => !o)}
         aria-label={count > 0 ? `Notifications, ${count} unread` : 'Notifications'} aria-expanded={open}
         className={`nav-bell relative text-xl w-9 h-9 rounded-full flex items-center justify-center ${open ? 'bg-blue-50' : ''}`}>
@@ -112,6 +141,14 @@ export function NavBell({ userId, onNavigate, msgScreen, updatesScreen, onOpenJo
             <span className="text-sm font-bold text-gray-800">Notifications</span>
             {count > 0 && <span className="text-xs bg-red-100 text-red-700 font-semibold px-2 py-0.5 rounded-full">{count} unread</span>}
           </div>
+          {count > 0 && (
+            <div className="px-4 py-2 border-b border-gray-100">
+              <button type="button" onClick={markAllRead} disabled={marking}
+                className="w-full min-h-9 rounded-md border border-[#1a4fa0] text-sm font-semibold text-[#1a4fa0] hover:bg-blue-50 disabled:opacity-60">
+                {marking ? 'Marking…' : <><span aria-hidden="true">✓ </span>Mark all as read</>}
+              </button>
+            </div>
+          )}
 
           <div className="max-h-64 overflow-y-auto">
             {shown.length > 0 && (

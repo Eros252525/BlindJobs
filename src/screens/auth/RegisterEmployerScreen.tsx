@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api'
-import { NO_CONSENT } from '@/lib/legal'
+import { NO_CONSENT } from '@/lib/documents/legal'
+import { gmailAddress, gmailProblem } from '@/lib/gmail'
 import { focusFirst, missingFields, missingMessage } from '@/lib/validation'
 import { AuthShell } from '@/components/auth/AuthShell'
+import { EmailCodeForm } from '@/components/auth/EmailCodeForm'
 import { ConsentFields, consentMessage, untickedConsent } from '@/components/legal/ConsentFields'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { FormField } from '@/components/ui/FormField'
-import { GmailUsernameInput } from '@/components/ui/GmailUsernameInput'
+import { GmailInput } from '@/components/ui/GmailInput'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Spinner } from '@/components/ui/Spinner'
 import type { User } from '@/types'
@@ -21,6 +23,9 @@ export function RegisterEmployerScreen({ onLogin, onBack }: { onLogin: (u: User)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [invalid, setInvalid] = useState<Set<string>>(new Set())
+  // After the form: the code emailed to the Gmail address is asked for before the account is made
+  const [awaitingCode, setAwaitingCode] = useState(false)
+  const email = gmailAddress(emailUsername)
   const fieldState = (id: string) => ({ invalid: invalid.has(id), describedBy: invalid.has(id) ? ERROR_ID : undefined })
 
   const handleRegister = async (e: FormEvent) => {
@@ -28,9 +33,15 @@ export function RegisterEmployerScreen({ onLogin, onBack }: { onLogin: (u: User)
     if (loading) return
     const missing = missingFields([
       { id: 'reg-company', label: 'Company name', value: companyName },
-      { id: 'reg-emp-email', label: 'Gmail username', value: emailUsername },
+      { id: 'reg-emp-email', label: 'Gmail address', value: emailUsername },
       { id: 'reg-emp-password', label: 'Password', value: password },
     ])
+    const emailProblem = missing.length ? null : gmailProblem(emailUsername)
+    if (emailProblem) {
+      setInvalid(new Set(['reg-emp-email'])); setError(emailProblem)
+      document.getElementById('reg-emp-email')?.focus()
+      return
+    }
     // consent is checked once the fields are complete, so the error names one thing at a time
     const unticked = missing.length ? [] : untickedConsent('reg-emp-consent', consent)
     setInvalid(new Set([...missing, ...unticked].map(f => f.id)))
@@ -38,10 +49,31 @@ export function RegisterEmployerScreen({ onLogin, onBack }: { onLogin: (u: User)
     if (unticked.length) { setError(consentMessage(unticked)); focusFirst(unticked); return }
     setError(''); setLoading(true)
     try {
-      const user = await api.register({ role: 'employer', companyName, emailUsername, password, consent })
-      onLogin(user)
+      if (!(await api.emailAvailable(email))) {
+        setInvalid(new Set(['reg-emp-email']))
+        setError('An account already uses this Gmail address. Sign in instead, or use another one.')
+        document.getElementById('reg-emp-email')?.focus()
+        return
+      }
+      await api.sendEmailCode(email)
+      setAwaitingCode(true)
     } catch (e: any) { setError(e.message) }
     finally { setLoading(false) }
+  }
+
+  // Runs once the code is accepted; a failure here goes back to the form to show it
+  const createAccount = async () => {
+    try {
+      onLogin(await api.register({ role: 'employer', companyName, emailUsername: email, password, consent }))
+    } catch (e: any) { setAwaitingCode(false); setError(e.message) }
+  }
+
+  if (awaitingCode) {
+    return (
+      <AuthShell width="max-w-md" braille showcase="Confirm your Gmail">
+        <EmailCodeForm email={email} onVerified={createAccount} onChangeEmail={() => setAwaitingCode(false)} />
+      </AuthShell>
+    )
   }
 
   return (
@@ -52,8 +84,8 @@ export function RegisterEmployerScreen({ onLogin, onBack }: { onLogin: (u: User)
           <input id="reg-company" className="input" type="text" autoComplete="organization" required value={companyName} onChange={(e) => setCompanyName(e.target.value)}
             aria-invalid={invalid.has('reg-company')} aria-describedby={fieldState('reg-company').describedBy} />
         </FormField>
-        <FormField id="reg-emp-email" label="Gmail username" required>
-          <GmailUsernameInput id="reg-emp-email" value={emailUsername} onChange={setEmailUsername} {...fieldState('reg-emp-email')} />
+        <FormField id="reg-emp-email" label="Gmail address" required>
+          <GmailInput id="reg-emp-email" value={emailUsername} onChange={setEmailUsername} {...fieldState('reg-emp-email')} />
         </FormField>
         <FormField id="reg-emp-password" label="Password" required>
           <PasswordInput id="reg-emp-password" value={password} onChange={setPassword} autoComplete="new-password" {...fieldState('reg-emp-password')} />
@@ -61,7 +93,7 @@ export function RegisterEmployerScreen({ onLogin, onBack }: { onLogin: (u: User)
         <ConsentFields idPrefix="reg-emp-consent" role="employer" value={consent} onChange={setConsent} invalid={invalid} errorId={ERROR_ID} />
         <ErrorMsg id={ERROR_ID} msg={error} />
         <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-70" disabled={loading} aria-busy={loading}>
-          {loading ? <><Spinner /><span className="sr-only">Creating your account</span></> : 'Complete registration'}
+          {loading ? <><Spinner /><span className="sr-only">Checking your Gmail and sending a code</span></> : 'Continue'}
         </button>
       </form>
       <button type="button" className="auth-link block mx-auto mt-5" onClick={onBack}>Back to sign in</button>

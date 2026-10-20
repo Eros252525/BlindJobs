@@ -63,10 +63,10 @@
 
 /* 175% and 200% */
 :root:is([data-size='175'], [data-size='200']) #root .md\:flex-row { flex-direction: column; }
-:root:is([data-size='175'], [data-size='200']) #root :is(.md\:w-72, .md\:w-48, .xl\:w-96) { width: 100%; }
+:root:is([data-size='175'], [data-size='200']) #root :is(.md\:w-72, .md\:w-80, .md\:w-48, .xl\:w-96) { width: 100%; }
 :root:is([data-size='175'], [data-size='200']) #root :is(.xl\:grid-cols-2) { grid-template-columns: minmax(0, 1fr); }
 :root:is([data-size='175'], [data-size='200']) #root :is(.xl\:col-start-1, .xl\:col-start-2, .xl\:col-span-2) { grid-column: auto; }
-:root:is([data-size='175'], [data-size='200']) #root :is(.xl\:row-start-2, .xl\:row-start-3, .xl\:row-span-2) { grid-row: auto; }
+:root:is([data-size='175'], [data-size='200']) #root :is(.xl\:row-start-2, .xl\:row-start-3, .xl\:row-start-4, .xl\:row-span-2) { grid-row: auto; }
 /* below 1280px wide, every multi-column grid becomes one column */
 @media (max-width: 79.99rem) {
   :root:is([data-size='175'], [data-size='200']) #root :is(
@@ -74,7 +74,7 @@
   ) {
     grid-template-columns: minmax(0, 1fr);
   }
-  :root:is([data-size='175'], [data-size='200']) #root :is(.sm\:col-span-2, .sm\:col-span-3, .col-span-2) { grid-column: 1 / -1; }
+  :root:is([data-size='175'], [data-size='200']) #root :is(.sm\:col-span-2, .sm\:col-span-3, .lg\:col-span-2, .col-span-2) { grid-column: 1 / -1; }
 }
 
 /* ═══ colour themes ═══════════════════════════════════════════════════════════ */
@@ -243,6 +243,8 @@
 
 /* ─── high contrast extras: thicker outlines everywhere ─── */
 :root:is([data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.border, .nav-dropdown) { border-width: 2px; }
+/* the chosen answer keeps its thick left edge: in these themes it is the only thing marking it besides the radio */
+:root:is([data-theme='contrast-dark'], [data-theme='contrast-light']) #root .border-l-8 { border-left-width: 10px; }
 :root:is([data-theme='contrast-dark'], [data-theme='contrast-light']) #root :is(.auth-card, [role='dialog'], .rounded-xl.shadow-sm, .rounded-xl.shadow-xl) {
   outline: 2px solid var(--t-line);
 }

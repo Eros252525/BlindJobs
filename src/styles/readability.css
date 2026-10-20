@@ -33,6 +33,11 @@
 #main-content .input {
   font-size: 1rem;
 }
+/* .btn-primary sets its size inside the class, so the .text-sm floor above never
+   reached it and it sat a size smaller than the secondary button next to it */
+#main-content .btn-primary {
+  font-size: 1rem;
+}
 
 /* small uppercase labels: less tracking, so letters don't drift apart */
 :is(#main-content, .app-nav) .uppercase {

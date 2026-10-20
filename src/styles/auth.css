@@ -167,23 +167,16 @@
 
 /* Navigation guide layout: one column on small screens, two side by side from
    1024px so the full guide is visible at once. */
+/* centred under both columns, as wide as one of them */
 .guide-continue {
-  margin-top: 1.5rem;
+  margin: 1.5rem auto 0;
+  max-width: 28rem;
 }
 @media (min-width: 1024px) {
   .guide-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     column-gap: 3rem;
-  }
-  .guide-side {
-    display: flex;
-    flex-direction: column;
-  }
-  /* pin Continue to the bottom of the shorter column */
-  .guide-continue {
-    margin-top: auto;
-    padding-top: 1.5rem;
   }
   .guide-grid .shortcut-row {
     padding: 0.4rem 0;
@@ -196,8 +189,7 @@
 }
 
 /* ─── role switch on login ───
-   Toggle buttons (aria-pressed), not radios: native radios capture the arrow keys,
-   which would trap the spatial navigator in lib/a11y/arrow-navigation.ts. */
+   Toggle buttons (aria-pressed), each its own Tab stop. */
 .role-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;

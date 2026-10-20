@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api'
+import { WORK_CATEGORIES } from '@/lib/assessment/work-categories'
 import { focusFirst, missingFields, missingMessage } from '@/lib/validation'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { FormField } from '@/components/ui/FormField'
@@ -11,7 +12,7 @@ const ERROR_ID = 'pj-error'
 export function EmpPostJobScreen({ user, onNavigate }: { user: User; onNavigate: (s: Screen) => void }) {
   // WCAG 3.3.7 Redundant Entry: the company name was given at registration (it is the
   // employer's account name), so start with it instead of asking again on every post.
-  const [form, setForm] = useState({ companyName: user.name.includes('@') ? '' : user.name, jobTitle: '', skills: '', location: '', salary: '', vacancies: '', jobType: 'Remote', experienceLevel: 'Entry Level', description: '' })
+  const [form, setForm] = useState({ companyName: user.name.includes('@') ? '' : user.name, jobTitle: '', skills: '', location: '', salary: '', vacancies: '', jobType: 'Remote', experienceLevel: 'Entry Level', description: '', workCategory: '' })
   const [disabilityCategories, setDisabilityCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -39,7 +40,7 @@ export function EmpPostJobScreen({ user, onNavigate }: { user: User; onNavigate:
     if (missing.length) { setError(missingMessage(missing)); focusFirst(missing); return }
     setError(''); setLoading(true)
     try {
-      await api.postJob({ ...form, disabilityCategories, status: 'Active', employerId: user.id, employerName: user.name })
+      await api.postJob({ ...form, workCategory: form.workCategory || undefined, disabilityCategories, status: 'Active', employerId: user.id, employerName: user.name })
       onNavigate('emp-dashboard')
     } catch (e: any) { setError(e.message) }
     finally { setLoading(false) }
@@ -84,6 +85,13 @@ export function EmpPostJobScreen({ user, onNavigate }: { user: User; onNavigate:
             <select id="pj-experience" className="input" value={form.experienceLevel} onChange={(e) => set('experienceLevel', e.target.value)}>
               <option>Entry Level</option><option>Intermediate</option><option>Senior Level</option>
             </select>
+          </FormField>
+          <FormField id="pj-workCategory" label="Kind of work">
+            <select id="pj-workCategory" className="input" aria-describedby="pj-workCategory-help" value={form.workCategory} onChange={(e) => set('workCategory', e.target.value)}>
+              <option value="">Not one of these</option>
+              {WORK_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <p id="pj-workCategory-help" className="mt-1 text-xs text-gray-600">Shown on the job post, so applicants can see at a glance what the work is.</p>
           </FormField>
           <fieldset className="sm:col-span-2">
             <legend className="field-label">Visual category, who can apply <span className="font-normal text-gray-600">(optional)</span></legend>

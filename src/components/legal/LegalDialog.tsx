@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ModalDialog } from '@/components/ui/ModalDialog'
-import { LEGAL_DOCS, onOpenLegal, type LegalDoc, type LegalDocId, type LegalSection } from '@/lib/legal'
+import { LEGAL_DOCS, onOpenLegal, type LegalDoc, type LegalDocId, type LegalSection } from '@/lib/documents/legal'
 
-// Mounted once in App; `openLegal('privacy' | 'terms')` from anywhere shows it.
+// Mounted once in App; `openLegal('privacy' | 'terms' | 'accessibility')` from anywhere shows it.
 export function LegalDialogHost() {
   const [doc, setDoc] = useState<LegalDocId | null>(null)
   useEffect(() => onOpenLegal(setDoc), [])
@@ -12,13 +12,12 @@ export function LegalDialogHost() {
 const sectionText = (s: LegalSection) => [s.heading, ...s.body, ...(s.items ?? [])].join('. ')
 
 // The intro and every section are focus stops (tabIndex 0), which is unusual for
-// plain text but needed here: the arrow keys move between focus stops instead of
-// scrolling, and the built-in reader only speaks what is focused. This way ↓ or
-// Tab walks through the whole document, scrolling it and reading it aloud, so
-// nobody is asked to agree to text they could not reach.
+// plain text but needed here: the built-in reader only speaks what is focused.
+// This way Tab walks through the whole document, scrolling it and reading it
+// aloud, so nobody is asked to agree to text they could not reach.
 function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => void }) {
   const meta = `Version ${doc.version}, effective ${doc.effective}.`
-  const howTo = `${doc.sections.length} sections. Press the down arrow or Tab to read each one, Escape to close.`
+  const howTo = `${doc.sections.length} sections. Press Tab to read each one, Escape to close.`
 
   return (
     // opened from the account menu, its item is gone by the time this closes: return to the menu button
@@ -48,7 +47,7 @@ function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => void }) {
                 {s.body.map(p => <p key={p} className="mt-2 text-base text-gray-800">{p}</p>)}
                 {s.items && (
                   <ul className="mt-2 list-disc pl-6 space-y-1.5 text-base text-gray-800">
-                    {s.items.map(item => <li key={item}>{item}</li>)}
+                    {s.items.map(item => <li key={item}><Item text={item} /></li>)}
                   </ul>
                 )}
               </section>
@@ -61,5 +60,24 @@ function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => void }) {
         </div>
       </div>
     </ModalDialog>
+  )
+}
+
+// An Accessibility statement item ("1.4.3 Contrast (Minimum) (Level AA). WCAG: “…” Blind Jobs: …")
+// is laid out in three parts: the criterion, W3C's words set apart as a quotation, and ours.
+// Any other item is plain text.
+const CRITERION = /^(.+?\(Level AA?\))\. WCAG: (“.+”) Blind Jobs: (.+)$/s
+
+function Item({ text }: { text: string }) {
+  const m = CRITERION.exec(text)
+  if (!m) return <>{text}</>
+  return (
+    <>
+      <strong className="text-gray-900">{m[1]}</strong>
+      <blockquote className="mt-1 border-l-4 border-gray-400 pl-3 text-gray-700">
+        <span className="sr-only">WCAG says: </span>{m[2]}
+      </blockquote>
+      <span className="block mt-1"><span className="font-semibold">How Blind Jobs meets it:</span> {m[3]}</span>
+    </>
   )
 }
