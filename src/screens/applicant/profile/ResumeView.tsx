@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react'
-import { scoreLevel } from '@/lib/assessment/question-bank'
-import { categoryById } from '@/lib/assessment/work-categories'
 import { initials } from '@/lib/format'
 import { fullName, resumeSections } from '@/lib/resume'
-import { ScoreFigure } from '@/components/ui/Meter'
 import type { ApplicantProfile } from '@/types'
 
 function formatUpdated(iso?: string) {
@@ -18,7 +15,7 @@ function formatUpdated(iso?: string) {
 
 /**
  * The saved resume, read-only, as an employer will read it. The story of the
- * applicant (about, scores, experience, education) runs down the wide column;
+ * applicant (about, experience, education) runs down the wide column;
  * the facts someone looks up (contact, skills, tools) sit in the side panel.
  * In the page's reading order the wide column comes first.
  */
@@ -30,16 +27,19 @@ export function ResumeView({ profile, skills, onEdit }: { profile: ApplicantProf
   const missing = sections.filter(s => !s.done).map(s => s.label)
   const experience = (profile.experience ?? []).filter(x => x.title.trim() || x.company.trim())
   const trainings = (profile.trainings || '').split('\n').map(t => t.trim()).filter(Boolean)
-  const checks = Object.entries(profile.categoryScores ?? {}).sort((a, b) => b[1].score - a[1].score)
   const headline = [profile.disabilityType, profile.location, (profile.workSetup ?? []).join(' or ')].filter(Boolean)
 
   return (
     <div className="flex-1 p-4 sm:p-6 pb-24 sm:pb-24">
       <article aria-labelledby="pf-view-title" className="w-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <header className="px-6 sm:px-8 py-6 flex flex-wrap items-center gap-5 border-b border-gray-200">
-          <span aria-hidden="true" className="w-20 h-20 shrink-0 rounded-full bg-[#1a4fa0] text-white text-2xl font-bold grid place-items-center">
-            {initials(name)}
-          </span>
+          {profile.photoUrl ? (
+            <img src={profile.photoUrl} alt="Your profile photo" className="w-20 h-20 shrink-0 rounded-full object-cover border border-gray-300" />
+          ) : (
+            <span aria-hidden="true" className="w-20 h-20 shrink-0 rounded-full bg-[#1a4fa0] text-white text-2xl font-bold grid place-items-center">
+              {initials(name)}
+            </span>
+          )}
           <div className="flex-1 min-w-[12rem]">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">My resume</p>
             <h1 id="pf-view-title" tabIndex={-1} className="text-3xl font-bold text-gray-900 leading-tight">{name}</h1>
@@ -75,24 +75,8 @@ export function ResumeView({ profile, skills, onEdit }: { profile: ApplicantProf
                 : <Empty>No introduction added yet.</Empty>}
             </ResumeSection>
 
-            <ResumeSection id="pf-v-skills" title="Top skills">
+            <ResumeSection id="pf-v-skills" title="Skills">
               <ChipList items={skills} empty="No skills added yet." />
-            </ResumeSection>
-
-            <ResumeSection id="pf-v-checks" title="Skills check scores">
-              {checks.length === 0 ? (
-                <Empty>No skills check taken yet. Take one on the Assessments page.</Empty>
-              ) : (
-                <ul className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
-                  {checks.map(([id, r]) => (
-                    <li key={id} className="rounded-xl border border-gray-300 p-4">
-                      <p className="font-semibold text-gray-900 mb-2">{categoryById(id)?.name ?? id}</p>
-                      <ScoreFigure score={r.score} level={scoreLevel(r.score)} />
-                      <p className="mt-2 text-sm text-gray-700">{r.correct} of {r.total} answers right</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </ResumeSection>
 
             <ResumeSection id="pf-v-exp" title="Work experience">
@@ -134,7 +118,7 @@ export function ResumeView({ profile, skills, onEdit }: { profile: ApplicantProf
           <div className="space-y-7 min-w-0 bg-gray-50 rounded-xl border border-gray-200 p-5 self-start w-full">
             <ResumeSection id="pf-v-contact" title="Contact">
               <dl className="space-y-3">
-                <ResumeItem label="Email" value={profile.email} />
+                {profile.email && <ResumeItem label="Email" value={profile.email} />}
                 <ResumeItem label="Mobile number" value={profile.mobile ? `+63 ${profile.mobile}` : ''} />
                 <ResumeItem label="City or province" value={profile.location} />
               </dl>

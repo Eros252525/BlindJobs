@@ -13,8 +13,8 @@
 //   5. Ranking     BM25 over each job's title (x3), skills (x2), kind of work (x2),
 //                  company and description, blended with the job-fit score
 import { categoryById } from '@/lib/assessment/work-categories'
-import type { JobFit } from '@/lib/job-fit'
-import { sameArea } from '@/lib/matching'
+import type { JobFit } from '@/lib/jobs/job-fit'
+import { sameArea } from '@/lib/jobs/matching'
 import type { Job } from '@/types'
 
 export type Setup = 'Remote' | 'On-site' | 'Hybrid'

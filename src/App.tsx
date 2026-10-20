@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import * as sr from './lib/a11y/screen-reader'
-import { useRemoteControl } from './lib/a11y/arrow-navigation'
 import { useScreenChangeA11y } from './hooks/useScreenChangeA11y'
 import { APPLICANT_SCREENS, EMPLOYER_SCREENS } from './constants'
+import { loadSession, saveSession } from './lib/session'
 import type { Screen, User } from './types'
 import { ToastContainer } from './components/toast/ToastContainer'
 import { AccessibilityBar } from './components/a11y/AccessibilityBar'
@@ -21,23 +21,23 @@ import { EmpDashboardScreen } from './screens/employer/EmpDashboardScreen'
 import { EmpPostJobScreen } from './screens/employer/EmpPostJobScreen'
 import { EmpApplicantsScreen } from './screens/employer/EmpApplicantsScreen'
 
-export default function App() {
-  const [screen, setScreen] = useState<Screen>('intro')
-  const [user, setUser] = useState<User | null>(null)
-  const [srEnabled, setSrEnabled] = useState(false)
+// Read once, before the first render, so a reload never flashes the welcome screen
+const restored = loadSession()
 
-  useRemoteControl()
+export default function App() {
+  const [screen, setScreen] = useState<Screen>(restored.screen)
+  const [user, setUser] = useState<User | null>(restored.user)
+  const [srEnabled, setSrEnabled] = useState(false)
 
   useEffect(() => {
     const cleanup = sr.init(setSrEnabled)
     return cleanup
   }, [])
 
-  useEffect(() => {
-    window.__srEnabled = srEnabled
-  }, [srEnabled])
-
   useScreenChangeA11y(screen)
+
+  // Remember where the user is, so a reload comes back here (see lib/session.ts)
+  useEffect(() => { saveSession({ user, screen }) }, [user, screen])
 
   const handleLogin = (u: User) => {
     setUser(u)
@@ -49,18 +49,14 @@ export default function App() {
   // Job picked on a dashboard: preselected in Jobs (applicant) or used as the board
   // filter in Applicants (employer). Plain navigation clears it.
   const [jobFocus, setJobFocus] = useState<string | null>(null)
-  // Skills check picked on the dashboard or a job (take or retake): opened straight away in Assessments
-  const [checkFocus, setCheckFocus] = useState<string | null>(null)
 
   const navigate = (s: Screen) => {
     if ((s === 'login' || s === 'intro') && user) { handleLogout(); return }
     setJobFocus(null)
-    setCheckFocus(null)
     setScreen(s)
   }
 
   const openJob = (jobId: string) => { setJobFocus(jobId); setScreen('jobs') }
-  const openCheck = (categoryId: string) => { setCheckFocus(categoryId); setScreen('assessments') }
   const openCandidates = (jobId: string) => { setJobFocus(jobId); setScreen('emp-applicants') }
 
   const isApplicant = APPLICANT_SCREENS.includes(screen)
@@ -68,10 +64,7 @@ export default function App() {
   const isLoggedIn = isApplicant || isEmployer
 
   return (
-    // Signed in, from tablet width up, the page is exactly the window: the navbar stays
-    // put and only <main> (or a screen's own panes) scrolls, so a long list never
-    // carries the navbar or the other half of a two-pane screen out of view.
-    <div className={`min-h-screen flex flex-col ${isLoggedIn ? 'md:h-dvh md:overflow-hidden' : ''}`}>
+    <div className="min-h-screen flex flex-col">
       <ToastContainer />
       {/* WCAG 2.4.1: let keyboard users jump past the navbar on every portal screen */}
       {isLoggedIn && <a href="#main-content" className="skip-link">Skip to main content</a>}
@@ -84,12 +77,12 @@ export default function App() {
       {screen === 'register-employer' && <RegisterEmployerScreen onLogin={handleLogin} onBack={() => setScreen('login')} />}
 
       {isLoggedIn && (
-        <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 md:overflow-y-auto focus:outline-none">
-        {screen === 'dashboard' && user && <DashboardScreen user={user} onNavigate={navigate} onOpenJob={openJob} onOpenCheck={openCheck} />}
+        <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 focus:outline-none">
+        {screen === 'dashboard' && user && <DashboardScreen user={user} onNavigate={navigate} onOpenJob={openJob} />}
         {screen === 'profile' && user && <ProfileScreen user={user} />}
-        {screen === 'assessments' && user && <AssessmentsScreen user={user} onNavigate={navigate} initialCategory={checkFocus} />}
-        {screen === 'jobs' && user && <JobsScreen user={user} initialJobId={jobFocus} onOpenCheck={openCheck} />}
-        {screen === 'messages' && user && <MessagesScreen user={user} />}
+        {screen === 'assessments' && user && <AssessmentsScreen user={user} />}
+        {screen === 'jobs' && user && <JobsScreen user={user} initialJobId={jobFocus} onGoToProfile={() => navigate('profile')} onGoToSurvey={() => navigate('assessments')} />}
+        {screen === 'messages' && user && <MessagesScreen user={user} onOpenJob={openJob} onFindJobs={() => navigate('jobs')} />}
 
         {screen === 'emp-dashboard' && user && <EmpDashboardScreen user={user} onNavigate={navigate} onViewCandidates={openCandidates} />}
         {screen === 'emp-post-job' && user && <EmpPostJobScreen user={user} onNavigate={navigate} />}

@@ -16,15 +16,15 @@ export function ConsentPage({ headingRef, consent, error, backLabel, onConsent, 
 }) {
   return (
     <PageCard narrow>
-      <p className={STEP_EYEBROW}>Health survey · optional and private</p>
+      <p className={STEP_EYEBROW}>Health survey · private</p>
       <h1 ref={headingRef} tabIndex={-1} className={STEP_HEADING}>Before you start</h1>
       <div className="mt-4 space-y-3 text-sm text-gray-800 max-w-3xl">
         <p>This is the RAND 36-Item Health Survey, a set of 36 questions used around the world. It asks how your health affects your daily life: moving about, working, pain, energy, mood and time with other people.</p>
         <ul className="list-disc pl-6 space-y-2">
-          <li><strong>It is your choice.</strong> You can use Blind Jobs, take a skills check and apply for jobs without it.</li>
-          <li><strong>Only you see the results.</strong> Employers never see your answers or scores, and they are not part of your job-fit score.</li>
+          <li><strong>It is needed before you apply for a job.</strong> Everything else on Blind Jobs works without it. If you do not want to answer, you can still look at jobs and send messages.</li>
+          <li><strong>Only you see the results.</strong> Employers never see your answers or scores, and they do not change how jobs are ranked for you.</li>
           <li><strong>It is not a medical test</strong> and not a test of your eyesight. There are no right or wrong answers.</li>
-          <li><strong>There is no time limit.</strong> It takes about 10 minutes. You may skip any question, and you can delete your answers at any time.</li>
+          <li><strong>There is no time limit.</strong> It takes about 10 minutes. You may skip any question, and you can withdraw your consent and delete your answers at any time.</li>
         </ul>
         <p>Your answers are health information, which the Data Privacy Act of 2012 treats as sensitive personal information. We save them only if you agree.</p>
       </div>

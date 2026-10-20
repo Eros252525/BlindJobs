@@ -3,15 +3,13 @@
 // and the employer's applicant view both read it from here, so the two always
 // show the same number for the same pair.
 //
-// What goes in: skills, the skills-check score for the job's kind of work, work
-// setup, location and experience. What never goes in: the type of visual
+// What goes in: skills, work setup, location and experience. What never goes in: the type of visual
 // disability, which may not count against an applicant (Magna Carta for Persons
 // with Disability, RA 7277).
-import { categoryById } from '@/lib/assessment/work-categories'
-import { jobSkillList, sameArea, skillMatches } from '@/lib/matching'
+import { jobSkillList, sameArea, skillMatches } from '@/lib/jobs/matching'
 import type { ApplicantProfile, Job } from '@/types'
 
-export type FitPartId = 'skills' | 'category' | 'setup' | 'location' | 'experience'
+export type FitPartId = 'skills' | 'setup' | 'location' | 'experience'
 
 export interface FitPart {
   id: FitPartId
@@ -30,15 +28,13 @@ export interface JobFit {
   parts: FitPart[]
   /** False when the employer limited the job to visual categories the applicant is not in. */
   eligible: boolean
-  /** Set when the job asks for a minimum skills-check score: whether the applicant has reached it. */
-  meetsMinimum?: boolean
   summary: string
 }
 
 // Share of the score each part carries. A part that does not apply to a job (no
-// work category chosen, no skills listed) is left out and the rest are scaled up
+// skills listed, no work setup given) is left out and the rest are scaled up
 // to 100, so a job is never marked down for something it did not ask for.
-const WEIGHTS: Record<FitPartId, number> = { skills: 35, category: 30, setup: 15, location: 10, experience: 10 }
+const WEIGHTS: Record<FitPartId, number> = { skills: 50, setup: 20, location: 15, experience: 15 }
 
 const isRemote = (job: Job) => /remote|work from home|wfh/i.test(`${job.jobType || ''} ${job.location || ''}`)
 
@@ -62,29 +58,6 @@ export function jobFit(job: Job, p: ApplicantProfile | null | undefined): JobFit
         : `None of the ${wanted.length} required skills are on the profile yet.`,
       tip: lacking.length ? `Not on the profile: ${lacking.join(', ')}.` : undefined,
     })
-  }
-
-  // Skills check: the weighted score in the job's work category
-  const category = categoryById(job.workCategory)
-  let meetsMinimum: boolean | undefined
-  if (category) {
-    const result = profile.categoryScores?.[category.id]
-    const min = Number(job.minCategoryScore) || 0
-    if (result) {
-      if (min) meetsMinimum = result.score >= min
-      raw.push({
-        id: 'category', label: `${category.name} skills check`, share: result.score / 100,
-        reason: `Scored ${result.score} out of 100` + (min ? `; this job asks for at least ${min}, which is ${meetsMinimum ? 'met' : 'not met yet'}.` : '.'),
-        tip: min && !meetsMinimum ? 'The skills check can be taken again.' : undefined,
-      })
-    } else {
-      if (min) meetsMinimum = false
-      raw.push({
-        id: 'category', label: `${category.name} skills check`, share: 0,
-        reason: 'Skills check not taken yet' + (min ? `; this job asks for at least ${min} out of 100.` : '.'),
-        tip: `Take the ${category.name} skills check on the Assessments page.`,
-      })
-    }
   }
 
   // Work setup: the job's setup is one the applicant said they want
@@ -134,7 +107,7 @@ export function jobFit(job: Job, p: ApplicantProfile | null | undefined): JobFit
   const cats = job.disabilityCategories || []
   const eligible = !cats.length || cats.some(c => c.toLowerCase() === (profile.disabilityType || '').toLowerCase())
 
-  return { score, parts, eligible, meetsMinimum, summary: fitSummary(score, parts, eligible, meetsMinimum) }
+  return { score, parts, eligible, summary: fitSummary(score, parts, eligible) }
 }
 
 /** Splits `total` whole points in proportion to `weights`; leftover points go to the largest remainders. */
@@ -156,12 +129,31 @@ export function fitLabel(score: number): string {
   return 'Low fit'
 }
 
-function fitSummary(score: number, parts: FitPart[], eligible: boolean, meetsMinimum?: boolean): string {
+function fitSummary(score: number, parts: FitPart[], eligible: boolean): string {
   if (!eligible) return 'The employer has limited this job to other visual categories.'
   const best = [...parts].filter(part => part.earned > 0).sort((a, b) => b.earned - a.earned)[0]
   return `${fitLabel(score)}, ${score} out of 100.` +
-    (best ? ` Strongest part: ${best.label.toLowerCase()}.` : '') +
-    (meetsMinimum === false ? ' Below the skills-check score this employer asks for.' : '')
+    (best ? ` Strongest part: ${best.label.toLowerCase()}.` : '')
+}
+
+export interface JobSuggestion { job: Job; fit: JobFit; because: string }
+
+/**
+ * The jobs to suggest to an applicant, best fit first: the ones asking for a
+ * skill on their profile. Nothing is suggested until the profile lists a skill.
+ * Jobs limited to another visual category are never suggested.
+ */
+export function suggestJobs(jobs: Job[], p: ApplicantProfile | null | undefined): JobSuggestion[] {
+  const mine = (p?.skills || []).filter(Boolean)
+  if (!p || !mine.length) return []
+  const out: JobSuggestion[] = []
+  for (const { job, fit } of rankJobs(jobs, p)) {
+    if (!fit.eligible) continue
+    const skills = jobSkillList(job).filter(s => skillMatches(s, mine))
+    if (!skills.length) continue
+    out.push({ job, fit, because: `Asks for your skill${skills.length === 1 ? '' : 's'}: ${skills.join(', ')}` })
+  }
+  return out
 }
 
 /**

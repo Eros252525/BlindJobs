@@ -3,17 +3,18 @@ import { api } from '@/lib/api'
 import { stageColor, timeAgo } from '@/lib/format'
 import { toast } from '@/lib/toast'
 import { useUpdateTick } from '@/hooks/useUpdateTick'
+import { useNow } from '@/hooks/useNow'
+import { suggestJobs } from '@/lib/jobs/job-fit'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ApplicantProfile, Conversation, Job, Screen, User } from '@/types'
-import { ScoresCard } from './dashboard/ScoresCard'
 
 type MyApplication = { job: Job; stage: string }
 
-export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenCheck }: {
+export function DashboardScreen({ user, onNavigate, onOpenJob }: {
   user: User; onNavigate: (s: Screen) => void; onOpenJob: (jobId: string) => void
-  onOpenCheck: (categoryId: string) => void
 }) {
   const [jobs, setJobs] = useState<Job[] | null>(null)
+  const now = useNow() // keeps "posted 5 minutes ago" current
   const [apps, setApps] = useState<MyApplication[] | null>(null)
   const [convCount, setConvCount] = useState(0)
   const [profile, setProfile] = useState<ApplicantProfile | null>(null)
@@ -47,9 +48,13 @@ export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenCheck }: {
 
   const appliedSet = new Set(apps?.map(a => a.job.id))
   const openJobs = (jobs || []).filter(j => (j.status || 'Active') === 'Active')
-  const latest = [...openJobs]
-    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-    .slice(0, 8)
+  // Once the profile lists skills, the right-hand list is the jobs suggested for this
+  // applicant; before that it is simply the newest jobs, with nothing recommended
+  const suggested = suggestJobs(openJobs, profile).slice(0, 8)
+  const latest = suggested.length
+    ? suggested.map(s => s.job)
+    : [...openJobs].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 8)
+  const reasonFor = (jobId: string) => suggested.find(s => s.job.id === jobId)?.because
   const inProgress = apps?.filter(a => a.stage === 'Reviewed' || a.stage === 'Interviewing').length ?? 0
   const hired = apps?.filter(a => a.stage === 'Hired').length ?? 0
 
@@ -78,10 +83,8 @@ export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenCheck }: {
           <h1 className="text-2xl font-bold">Welcome back, {user.name}! <span aria-hidden="true">🦯</span></h1>
           <p className="text-sm">Here's what's happening with your job search.</p>
         </div>
-        <p className="text-xs">Arrow keys move between tiles and lists · ↑ reach nav bar · <strong>Enter</strong> to open</p>
+        <p className="text-xs"><strong>Tab</strong> moves between tiles and lists · <strong>Enter</strong> to open</p>
       </header>
-
-      {profile && <ScoresCard profile={profile} onOpen={() => onNavigate('assessments')} onRetake={onOpenCheck} />}
 
       <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-4">
         {tiles.map(t => (
@@ -133,7 +136,7 @@ export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenCheck }: {
         {/* Latest openings */}
         <section aria-labelledby="dash-latest" className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col min-h-[18rem]">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 id="dash-latest" className="font-bold text-gray-900">Latest Job Openings</h2>
+            <h2 id="dash-latest" className="font-bold text-gray-900">{suggested.length ? 'Suggested Jobs for You' : 'Latest Job Openings'}</h2>
             <button onClick={() => onNavigate('jobs')} className="min-h-6 px-1 text-xs font-semibold text-[#1a4fa0] hover:underline">View all →</button>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
@@ -147,14 +150,15 @@ export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenCheck }: {
                 // wraps so Apply drops below the title when text is very large, instead of squeezing it
                 <div key={job.id} className="flex flex-wrap items-center gap-2 px-1 rounded-lg hover:bg-gray-50 transition-colors">
                   <button onClick={() => onOpenJob(job.id)}
-                    data-speak={`${job.jobTitle} at ${job.companyName}, ${job.location || 'Remote'}${job.salary ? `, salary ${job.salary} pesos` : ''}. Posted ${timeAgo(job.createdAt)}`}
+                    data-speak={`${job.jobTitle} at ${job.companyName}, ${job.location || 'Remote'}${job.salary ? `, salary ${job.salary} pesos` : ''}. Posted ${timeAgo(job.createdAt, now)}${reasonFor(job.id) ? `. Suggested: ${reasonFor(job.id)}` : ''}`}
                     className="flex-1 min-w-[10rem] text-left px-2 py-3 flex items-center gap-3">
                     <span aria-hidden="true" className="w-10 h-10 rounded-lg bg-green-50 grid place-items-center text-lg shrink-0">⌨️</span>
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-gray-900 truncate">{job.jobTitle}</span>
                       <span className="block text-xs text-gray-600 truncate">
-                        {job.companyName} · {job.location || 'Remote'}{job.salary ? ` · ₱${job.salary}` : ''} · {timeAgo(job.createdAt)}
+                        {job.companyName} · {job.location || 'Remote'}{job.salary ? ` · ₱${job.salary}` : ''} · Posted {timeAgo(job.createdAt, now)}
                       </span>
+                      {reasonFor(job.id) && <span className="block text-xs font-semibold text-[#1a7a3c]">{reasonFor(job.id)}</span>}
                     </span>
                   </button>
                   {applied ? (

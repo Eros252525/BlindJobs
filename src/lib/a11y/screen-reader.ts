@@ -1,5 +1,12 @@
 // Built-in screen reader (TTS) + voice input (STT) using Web Speech API
 
+declare global {
+  interface Window {
+    /** Set while code moves focus and announces the place itself, so the focus is not spoken twice. */
+    __quietFocus?: boolean
+  }
+}
+
 const synth = window.speechSynthesis
 
 // ── Screen Reader (TTS) ───────────────────────────────────────────────────────
@@ -30,16 +37,138 @@ export function announce(text: string) {
 
 export function isEnabled() { return enabled }
 
-export function toggle() {
-  enabled = !enabled
-  if (enabled) {
-    announce('Screen reader on. Use Tab to navigate, Enter to activate, F2 to turn off.')
-  } else {
-    synth.cancel()
-    const utt = new SpeechSynthesisUtterance('Screen reader off.')
-    synth.speak(utt)
-  }
+// The reader starts on for everyone; pressing 2 (mute) or F2 turns it off, and that
+// choice is remembered so a reload doesn't read the whole page again.
+const MUTED_KEY = 'blindjobs.screenReaderMuted'
+
+function loadMuted() {
+  try { return localStorage.getItem(MUTED_KEY) === '1' } catch { return false }
+}
+
+function saveMuted(muted: boolean) {
+  try { localStorage.setItem(MUTED_KEY, muted ? '1' : '0') } catch { /* private mode: lasts for this visit */ }
+}
+
+function setEnabled(on: boolean, offMessage = 'Screen reader off. Press F2 to turn it back on.') {
+  enabled = on
+  saveMuted(!on)
   onToggleCb?.(enabled)
+  if (on) {
+    readScreen('Screen reader on.')
+  } else {
+    choiceOpen = false
+    synth.cancel()
+    synth.speak(new SpeechSynthesisUtterance(offMessage))
+  }
+}
+
+export function toggle() { setEnabled(!enabled) }
+
+// ── Read the whole screen ─────────────────────────────────────────────────────
+
+const PROMPT =
+  'End of page. To hear this page again, press 1. To mute the screen reader, press 2. ' +
+  'Use Tab to move between items. Press F2 at any time to turn the screen reader on or off.'
+
+// After a full read, 1 (repeat) and 2 (mute) are live until the user does anything
+// else, so the digits stay free for typing and for other shortcuts (WCAG 2.1.4).
+let choiceOpen = false
+// Chrome and Edge refuse speech until the user has pressed a key or clicked, so a
+// read blocked at page load waits for that first gesture and starts then.
+let waitingForGesture = false
+let pendingIntro = ''
+
+const SKIP = 'script, style, noscript, template, [hidden], [aria-hidden="true"], .skip-link'
+const CONTROL = 'a[href], button, input, select, textarea, summary, [role="button"], [role="link"]'
+
+/** The visible page as lines of speech, in reading order; controls are described like on focus. */
+function pageLines(): string[] {
+  const lines: string[] = []
+  let line = ''
+  const flush = () => {
+    const text = line.replace(/\s+/g, ' ').trim()
+    if (text) lines.push(text)
+    line = ''
+  }
+  const say = (text: string | null | undefined) => {
+    flush()
+    line = text || ''
+    flush()
+  }
+
+  const visit = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) { line += ` ${node.textContent ?? ''}`; return }
+    if (!(node instanceof Element) || node.matches(SKIP)) return
+    const style = getComputedStyle(node)
+    if (style.display === 'none' || style.visibility === 'hidden') return
+
+    if (node instanceof HTMLElement && node.matches(CONTROL)) {
+      if ((node as HTMLInputElement).type !== 'hidden') say(describeElement(node))
+      return
+    }
+    if (node instanceof HTMLImageElement) { if (node.alt) say(node.alt); return }
+    if (node.getAttribute('role') === 'img') { say(node.getAttribute('aria-label')); return }
+    if (node instanceof HTMLLabelElement) {
+      // Its control already speaks the label text, so don't read it twice
+      if (node.htmlFor) return
+      const inner = node.querySelectorAll<HTMLElement>(CONTROL)
+      if (inner.length) { inner.forEach(c => say(describeElement(c))); return }
+    }
+    if (node.tagName === 'BR') { flush(); return }
+
+    const block = !style.display.startsWith('inline')
+    if (block) flush()
+    node.childNodes.forEach(visit)
+    if (block) flush()
+  }
+
+  visit(document.body)
+  flush()
+  return lines
+}
+
+// A screen can hand over its own spoken script (e.g. the intro's tutorial) to read
+// in place of the raw page text; it clears it again when it unmounts.
+let script: string[] | null = null
+
+export function setScreenScript(lines: string[] | null) {
+  script = lines
+}
+
+/** Reads everything on screen, then offers 1 to repeat and 2 to mute. */
+export function readScreen(intro = '') {
+  if (!enabled) return
+  synth.cancel()
+  choiceOpen = true
+  const parts = [intro, ...(script ?? pageLines()), PROMPT].filter(Boolean)
+  parts.forEach((text, i) => {
+    const utt = new SpeechSynthesisUtterance(text)
+    if (i === 0) {
+      utt.onerror = (e) => {
+        if (e.error === 'not-allowed') { waitingForGesture = true; pendingIntro = intro }
+      }
+    }
+    synth.speak(utt)
+  })
+}
+
+function isTyping(target: EventTarget | null) {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  if (el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true
+  if (el.tagName !== 'INPUT') return false
+  const type = (el as HTMLInputElement).type
+  return !['button', 'checkbox', 'radio', 'submit', 'reset', 'range', 'color', 'file'].includes(type)
+}
+
+function startAfterGesture() {
+  waitingForGesture = false
+  readScreen(pendingIntro)
+}
+
+function onPointerDown() {
+  choiceOpen = false
+  if (waitingForGesture) startAfterGesture()
 }
 
 function describeElement(el: HTMLElement): string {
@@ -102,8 +231,8 @@ export function groupQuestion(el: HTMLElement, from: Element | null): string {
 }
 
 function onFocus(e: FocusEvent) {
-  // Skip if arrow-navigation already spoke this focus event
-  if (window.__remoteNavFocusing) return
+  // Skip focus moves whose place was already announced (screen changes, form steps)
+  if (window.__quietFocus) return
   const el = e.target as HTMLElement
   if (!el || el.tagName === 'BODY' || el.tagName === 'HTML') return
   const desc = describeElement(el)
@@ -116,11 +245,28 @@ function onFocus(e: FocusEvent) {
 // NVDA's own "stop speech" key. F2 is unclaimed by Chrome, Edge, Firefox and NVDA
 // (F5 reload, F7 caret browsing, F9 Edge Immersive Reader, F12 DevTools are not),
 // and as a non-character key it is allowed as a single-key shortcut (WCAG 2.1.4).
-function onToggleKey(e: KeyboardEvent) {
-  if (e.key === 'F2' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.repeat) {
+function onKeyDown(e: KeyboardEvent) {
+  if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return
+
+  // Speech was blocked at load: this first key press starts the reading instead of
+  // doing its usual job, except while typing in a field.
+  if (waitingForGesture && enabled && !isTyping(e.target)) {
+    e.preventDefault()
+    startAfterGesture()
+    return
+  }
+
+  if (e.key === 'F2' && !e.shiftKey) {
     e.preventDefault()
     toggle()
+    return
   }
+
+  if (choiceOpen && enabled && !e.shiftKey && !isTyping(e.target)) {
+    if (e.key === '1') { e.preventDefault(); readScreen(); return }
+    if (e.key === '2') { e.preventDefault(); setEnabled(false, 'Screen reader muted. Press F2 to turn it back on.'); return }
+  }
+  choiceOpen = false
 }
 
 function onKey(e: KeyboardEvent) {
@@ -145,12 +291,21 @@ export function init(cb: (v: boolean) => void) {
 
   document.addEventListener('focusin', focusHandler)
   document.addEventListener('keyup', keyHandler)
-  document.addEventListener('keydown', onToggleKey)
+  document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('pointerdown', onPointerDown)
+
+  // On from the start unless the user muted it last time; give the screen a moment
+  // to load its data before reading it.
+  enabled = !loadMuted()
+  cb(enabled)
+  const start = enabled ? window.setTimeout(() => readScreen('Welcome to Blind Jobs.'), 1000) : 0
 
   return () => {
+    window.clearTimeout(start)
     if (focusHandler) document.removeEventListener('focusin', focusHandler)
     if (keyHandler) document.removeEventListener('keyup', keyHandler)
-    document.removeEventListener('keydown', onToggleKey)
+    document.removeEventListener('keydown', onKeyDown)
+    document.removeEventListener('pointerdown', onPointerDown)
     synth.cancel()
     if (voiceEnabled) recognition?.stop()
   }

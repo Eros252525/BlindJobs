@@ -63,7 +63,7 @@
 
 /* 175% and 200% */
 :root:is([data-size='175'], [data-size='200']) #root .md\:flex-row { flex-direction: column; }
-:root:is([data-size='175'], [data-size='200']) #root :is(.md\:w-72, .md\:w-48, .xl\:w-96) { width: 100%; }
+:root:is([data-size='175'], [data-size='200']) #root :is(.md\:w-72, .md\:w-80, .md\:w-48, .xl\:w-96) { width: 100%; }
 :root:is([data-size='175'], [data-size='200']) #root :is(.xl\:grid-cols-2) { grid-template-columns: minmax(0, 1fr); }
 :root:is([data-size='175'], [data-size='200']) #root :is(.xl\:col-start-1, .xl\:col-start-2, .xl\:col-span-2) { grid-column: auto; }
 :root:is([data-size='175'], [data-size='200']) #root :is(.xl\:row-start-2, .xl\:row-start-3, .xl\:row-start-4, .xl\:row-span-2) { grid-row: auto; }

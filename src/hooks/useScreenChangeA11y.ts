@@ -24,9 +24,9 @@ export function useScreenChangeA11y(screen: Screen) {
       const heading = document.querySelector<HTMLElement>('h1')
       if (!heading) return
       heading.tabIndex = -1
-      window.__remoteNavFocusing = true // the announce below already says where we are
+      window.__quietFocus = true // the announce below already says where we are
       heading.focus({ preventScroll: true })
-      window.__remoteNavFocusing = false
+      window.__quietFocus = false
     })
 
     if (label) sr.announce(label)

@@ -5,13 +5,12 @@ export type Screen =
   | 'dashboard' | 'profile' | 'assessments' | 'jobs' | 'messages'
   | 'emp-dashboard' | 'emp-post-job' | 'emp-applicants' | 'emp-messages'
 
+// `email` is what the user signs in with: an email address, or an applicant's username
 export interface User { id: string; role: Role; email: string; name: string }
 
 export interface Job { id: string; employerId: string; companyName: string; jobTitle: string; skills: string; location: string; salary: string; jobType: string; experienceLevel: string; description: string; createdAt: string; status?: string; vacancies?: string; disabilityCategories?: string[]; listed?: boolean; deleted?: boolean
-  // The kind of work (a WorkCategoryId) and the lowest skills-check score the employer asks for in it
-  workCategory?: string; minCategoryScore?: number
-  // True when the employer will only take applications from people who have taken that skills check
-  requireCheck?: boolean }
+  // The kind of work, a WorkCategoryId
+  workCategory?: string }
 
 export interface WorkExperience { title: string; company: string; period: string }
 
@@ -19,8 +18,12 @@ export interface WorkExperience { title: string; company: string; period: string
 // may be missing on profiles saved before those fields existed.
 export interface ApplicantProfile {
   userId?: string; email?: string
+  // What applicants sign in with; they register without an email (older accounts have one)
+  username?: string
   firstName?: string; middleName?: string; lastName?: string; suffix?: string
   mobile?: string; gender?: string; disabilityType?: string; skills?: string[]
+  // A small square JPEG as a data URL (see lib/photo.ts); null or missing = no photo
+  photoUrl?: string | null
   location?: string
   about?: string
   educationLevel?: string; school?: string; trainings?: string
@@ -28,26 +31,40 @@ export interface ApplicantProfile {
   assistiveTech?: string[]; workSetup?: string[]; languages?: string[]
   // What the applicant asks an employer to arrange (choices in resume.ts)
   accommodations?: string[]
-  // Latest skills-check result per work category, keyed by WorkCategoryId
-  categoryScores?: Record<string, CategoryScore>
   updatedAt?: string
 }
 
-export interface CategoryScore { score: number; correct: number; total: number; takenAt: string; attempts: number }
-
-// One row per finished skills check, assessment_attempt:<userId>:<takenAt>:<id>,
-// so retakes and the answers given are kept. The profile holds only the latest score.
-// `chosen` is the option's text, not its position: options are shuffled on every draw.
-export interface CheckAnswer { questionId: string; topic: string; weight: number; chosen: string | null; right: boolean }
-export interface CheckAttempt {
-  id: string; userId?: string; categoryId: string; takenAt: string
-  score: number; earned: number; possible: number; correct: number; total: number
-  answers: CheckAnswer[]
+// The RAND-36 health survey, stored as health_assessment:<userId> and never on the
+// profile, because employers are sent the profile of anyone who applies to them.
+export interface HealthAssessment {
+  instrument: 'RAND-36 1.0'
+  /** Item number → position of the chosen answer, from 1; skipped items are absent. */
+  answers: Record<number, number>
+  scales: { id: string; score: number | null; answered: number; of: number }[]
+  healthChange: number | null
+  /** When the applicant ticked the consent box, and when they finished. */
+  consentAt: string
+  takenAt: string
 }
 
 export interface Applicant { applicantId: string; jobId: string; jobTitle: string; stage: string; appliedAt: string; profile: ApplicantProfile | null; job?: Job | null }
 
-export interface Conversation { id: string; applicantId: string; employerId: string; applicantName: string; employerName: string; jobTitle: string; jobId?: string }
+export interface Conversation { id: string; applicantId: string; employerId: string; applicantName: string; employerName: string; jobTitle: string; jobId?: string; createdAt?: string }
+
+// A job the applicant has applied for, with where the application stands
+export interface MyApplication { job: Job; stage: string; appliedAt: string }
+
+// One row of the Messages inbox: a conversation with what the list shows about it,
+// worked out for the user looking at it (their unread count, their pins).
+export interface InboxThread extends Conversation {
+  count: number
+  lastAt: string
+  lastText: string
+  lastFromMe: boolean
+  unread: number
+  sentByMe: boolean
+  pinned: boolean
+}
 
 // One row each, notification:<userId>:<time>:<id>. `read` is not stored; the API
 // works it out from notifications_seen:<userId> on load.
@@ -55,6 +72,7 @@ export interface Conversation { id: string; applicantId: string; employerId: str
 // them; 'application' = someone applied to the employer's job.
 export interface AppNotification { id: string; type: 'stage' | 'job' | 'application'; jobId: string; stage?: string; text: string; createdAt: string; read: boolean }
 
-export interface Message { id: string; senderId: string; senderName: string; text: string; sentAt: string }
+// `deleted`: the sender removed it for everyone; the text is gone and only the fact remains
+export interface Message { id: string; senderId: string; senderName: string; text: string; sentAt: string; deleted?: boolean }
 
 export interface UnreadMessage extends Message { convId: string; jobTitle: string }

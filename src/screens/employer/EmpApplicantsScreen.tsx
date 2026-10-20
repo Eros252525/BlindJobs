@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { stageColor } from '@/lib/format'
-import { fitLabel, jobFit } from '@/lib/job-fit'
+import { fitLabel, jobFit } from '@/lib/jobs/job-fit'
 import { toast } from '@/lib/toast'
 import { KANBAN_COLS } from '@/constants'
 import { useUpdateTick } from '@/hooks/useUpdateTick'
@@ -9,7 +9,6 @@ import { ModalDialog } from '@/components/ui/ModalDialog'
 import { Spinner } from '@/components/ui/Spinner'
 import type { Applicant, Conversation, Job, User } from '@/types'
 import { FitAndAccommodations } from './applicants/FitAndAccommodations'
-import { takenChecks } from './applicants/SkillsScores'
 
 export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initialJobId?: string | null }) {
   const [applicants, setApplicants] = useState<Applicant[]>([])
@@ -171,11 +170,6 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                         {fitLabel(fitOf(a)!.score)}: {fitOf(a)!.score}/100
                       </span>
                     )}
-                    {takenChecks(a).slice(0, 1).map(c => (
-                      <span key={c.id} className="inline-flex items-center mr-1 mb-1 bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                        {c.name} check: {c.result.score}/100
-                      </span>
-                    ))}
                     {a.profile?.disabilityType && (
                       <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] px-2 py-0.5 rounded-full border border-blue-200">
                         <span aria-hidden="true">♿</span> {a.profile.disabilityType}
@@ -193,8 +187,11 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
       {modal && (
         <ModalDialog labelledBy="ats-dialog-title" onClose={closeModal} returnFocusTo={`[data-card="${modal.jobId}:${modal.applicantId}"]`}>
             {/* Modal header */}
-            <div className="px-6 pt-6 pb-4 flex items-start justify-between">
-              <div>
+            <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4">
+              {modal.profile?.photoUrl && (
+                <img src={modal.profile.photoUrl} alt={`Photo of ${fullName(modal)}`} className="w-16 h-16 shrink-0 rounded-full object-cover border border-gray-300" />
+              )}
+              <div className="flex-1 min-w-0">
                 <h2 id="ats-dialog-title" className="text-lg font-bold text-[#1a4fa0]">{fullName(modal)}</h2>
                 <p className="text-sm text-gray-600 mt-0.5">
                   Candidate for: <span className="font-semibold text-gray-700">
@@ -211,7 +208,7 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                 <p className="text-sm text-gray-800 whitespace-pre-line mb-3 border-l-4 border-[#1a4fa0] pl-3">{modal.profile.about}</p>
               )}
               <div className="bg-gray-50 rounded-lg px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-4">
-                <div><span className="font-semibold">Email:</span> <span className="text-gray-700">{modal.profile?.email || '—'}</span></div>
+                <div><span className="font-semibold">Email:</span> <span className="text-gray-700">{modal.profile?.email || 'None. Reach this applicant in Messages or by phone.'}</span></div>
                 <div><span className="font-semibold">Disability:</span> <span className="text-gray-700">{modal.profile?.disabilityType || '—'}</span></div>
                 <div><span className="font-semibold">Phone:</span> <span className="text-gray-700">{modal.profile?.mobile || '—'}</span></div>
                 <div><span className="font-semibold">Location:</span> <span className="text-gray-700">{modal.profile?.location || '—'}</span></div>

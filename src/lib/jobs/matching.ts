@@ -28,8 +28,8 @@ export type JobMatch = { skills: string[]; location: boolean }
 
 /**
  * Why a newly posted job suits this applicant, or null if they should not be told
- * about it. A shared skill or the same area is enough. A job limited to visual
- * categories the applicant is not in is never announced to them.
+ * about it. A shared skill or the same area is enough. A job limited to visual categories the
+ * applicant is not in is never announced to them.
  */
 export function jobMatch(job: Job, p: ApplicantProfile): JobMatch | null {
   const cats = job.disabilityCategories || []

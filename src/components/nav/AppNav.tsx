@@ -13,16 +13,15 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
   const [mobileOpen, setMobileOpen] = useState(false)
   const [indicator, setIndicator] = useState<{ x: number; w: number } | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
   const linkRefs = useRef(new Map<Screen, HTMLButtonElement>())
 
   // Elevate the bar once content scrolls beneath it (shadow only; see nav.css for why its size never changes)
-  // The page scrolls on phones; from tablet width up <main> does (see App.tsx). A
-  // capturing listener hears both, since scroll events do not bubble.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8 || (document.getElementById('main-content')?.scrollTop ?? 0) > 8)
+    const onScroll = () => setScrolled(window.scrollY > 8)
     onScroll()
-    document.addEventListener('scroll', onScroll, { passive: true, capture: true })
-    return () => document.removeEventListener('scroll', onScroll, { capture: true })
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   // Slide a single pill under the active link; re-measure when the track resizes
@@ -38,23 +37,22 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
     return () => ro.disconnect()
   }, [active])
 
-  // Alt+1..n jumps straight to a section
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
-      const link = links[Number(e.key) - 1]
-      if (!link) return
-      e.preventDefault()
-      onNavigate(link.target)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [links, onNavigate])
+  // Publish the bar's height as --nav-h, so a screen can fill exactly the space below it
+  // (the Jobs split view). Measured, not assumed: it grows with the chosen text size.
+  useLayoutEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const publish = () => document.documentElement.style.setProperty('--nav-h', `${el.offsetHeight}px`)
+    publish()
+    const ro = new ResizeObserver(publish)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => { setMobileOpen(false) }, [active])
 
   return (
-    <nav aria-label="Main" data-nav-zone="navbar"
+    <nav ref={navRef} aria-label="Main" data-nav-zone="navbar"
       className={`app-nav w-full px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 shrink-0 sticky top-0 z-40 ${scrolled ? 'is-scrolled' : ''}`}>
       <button type="button" onClick={() => onNavigate(home)} data-speak="blind jobs, home" aria-label="Blind Jobs, home"
         className="nav-logo text-lg font-bold flex items-center gap-2.5 shrink-0">
@@ -67,15 +65,13 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
           <span aria-hidden="true" className="nav-indicator"
             style={{ transform: `translateX(${indicator.x}px)`, width: indicator.w }} />
         )}
-        {links.map((l, i) => {
+        {links.map(l => {
           const isActive = active === l.target
           return (
             <button key={l.target}
               ref={el => { if (el) linkRefs.current.set(l.target, el); else linkRefs.current.delete(l.target) }}
               onClick={() => onNavigate(l.target)}
               aria-current={isActive ? 'page' : undefined}
-              aria-keyshortcuts={`Alt+${i + 1}`}
-              title={`${l.label} (Alt+${i + 1})`}
               data-speak={isActive ? `${l.label}, current page` : l.label}
               className={`nav-link ${isActive ? 'nav-link-active' : ''}`}>
               <span aria-hidden="true" className="nav-link-icon">{l.icon}</span>{l.label}

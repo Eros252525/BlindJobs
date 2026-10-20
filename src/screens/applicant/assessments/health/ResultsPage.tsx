@@ -74,7 +74,7 @@ export function ResultsPage({ headingRef, assessment, busy, nextLabel, onNext, o
           <li>These scores describe how you felt when you answered. They are not a diagnosis. If a result worries you, please talk to a doctor or a health worker you trust.</li>
           <li>The study average is from the Medical Outcomes Study, in which 2,471 adult patients in the United States answered the same questions. It is a reference point only: there are no published averages for Filipinos who are blind or have low vision.</li>
           <li>The survey has no pass mark, and RAND gives no cut-off scores. Words such as "upper middle of the scale" only say where a number sits between 0 and 100.</li>
-          <li>Employers never see this page, and nothing here changes your job-fit score.</li>
+          <li>Employers never see this page, and nothing here changes how jobs are ranked for you.</li>
         </ul>
       </section>
 

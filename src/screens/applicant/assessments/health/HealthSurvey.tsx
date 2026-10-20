@@ -27,7 +27,7 @@ export interface HealthSurveyLabels {
 const DEFAULT_LABELS: HealthSurveyLabels = {
   back: 'Back to assessments',
   leave: 'Leave without saving',
-  next: 'Continue to the skills check',
+  next: 'Back to assessments',
   saved: 'Health survey saved. Only you can see it.',
 }
 

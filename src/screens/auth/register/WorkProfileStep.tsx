@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from 'react'
-import { ACCOMMODATIONS, ASSISTIVE_TECH, SKILL_CHOICES, WORK_SETUPS } from '@/lib/resume'
+import { ACCOMMODATIONS, ASSISTIVE_TECH, WORK_SETUPS } from '@/lib/resume'
 import { focusFirst, missingFields, missingMessage } from '@/lib/validation'
 import { useStepFocus } from '@/hooks/useStepFocus'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { FormField } from '@/components/ui/FormField'
 import { PageCard, STEP_HEADING } from '@/components/ui/PageCard'
+import { SkillPicker } from '@/components/ui/SkillPicker'
+import { useSkillSources } from '@/hooks/useSkillSources'
+import { ProfilePreview } from './ProfilePreview'
 
 const ERROR_ID = 'wp-error'
-const MAX_SKILLS = 3
 
 /** What registration asks about work: enough to suggest kinds of work and to match jobs. */
 export interface WorkProfile {
@@ -25,7 +27,7 @@ export const EMPTY_WORK_PROFILE: WorkProfile = {
   disabilityType: '', skills: [], jobTitle: '', company: '', location: '', workSetup: [], assistiveTech: [], accommodations: [],
 }
 
-type ListKey = 'skills' | 'workSetup' | 'assistiveTech' | 'accommodations'
+type ListKey = 'workSetup' | 'assistiveTech' | 'accommodations'
 
 /** Registration step 3: skills, experience and work preferences. */
 export function WorkProfileStep({ value, onChange, onContinue }: {
@@ -33,17 +35,12 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
 }) {
   const [error, setError] = useState('')
   const [invalid, setInvalid] = useState<Set<string>>(new Set())
-  const [note, setNote] = useState('')
   const headingRef = useStepFocus<HTMLHeadingElement>('work-profile', 'Your skills and work preferences.')
 
+  const { jobs } = useSkillSources()
   const set = <K extends keyof WorkProfile>(k: K, v: WorkProfile[K]) => onChange({ ...value, [k]: v })
   const toggle = (k: ListKey, v: string) => {
     const cur = value[k]
-    if (k === 'skills' && !cur.includes(v) && cur.length >= MAX_SKILLS) {
-      setNote(`You can pick up to ${MAX_SKILLS} skills. Unselect one to choose ${v}.`)
-      return
-    }
-    setNote('')
     set(k, cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v])
   }
 
@@ -61,13 +58,15 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
 
   return (
     <PageCard>
-      <form onSubmit={submit} noValidate>
+      {/* the form on the left; on wide screens a live summary of the answers fills the right */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <form onSubmit={submit} noValidate className="lg:col-span-2 min-w-0">
         <h1 ref={headingRef} tabIndex={-1} className={STEP_HEADING}>Your skills and work preferences</h1>
-        <p className="mt-1 text-sm text-gray-700 max-w-3xl">
-          We use these to suggest kinds of work for you in the next step, and to match you with jobs. You can change all of it on your profile later.
+        <p className="mt-1 text-sm text-gray-700">
+          We use these to match you with jobs. You can change all of it on your profile later.
         </p>
 
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 max-w-3xl">
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
           <FormField id="wp-disability" label="Disability type" required>
             <select id="wp-disability" className="input" required value={value.disabilityType} onChange={(e) => set('disabilityType', e.target.value)}
               aria-invalid={invalid.has('wp-disability')} aria-describedby={invalid.has('wp-disability') ? ERROR_ID : undefined}>
@@ -79,24 +78,12 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
           </FormField>
         </div>
 
-        <div className="mt-6 max-w-3xl">
-          <p id="wp-skills" className="field-label">Your top skills <span className="font-normal text-gray-600">(required, at least one, up to {MAX_SKILLS})</span></p>
-          <div role="group" aria-labelledby="wp-skills" className="flex flex-wrap gap-2">
-            {SKILL_CHOICES.map((s, i) => {
-              const on = value.skills.includes(s)
-              return (
-                <button type="button" key={s} id={i === 0 ? 'wp-skills-first' : undefined} aria-pressed={on} onClick={() => toggle('skills', s)}
-                  aria-describedby={i === 0 && invalid.has('wp-skills-first') ? ERROR_ID : undefined}
-                  className={`${CHIP} ${on ? CHIP_ON : CHIP_OFF}`}>
-                  {on ? '✓ ' : ''}{s}
-                </button>
-              )
-            })}
-          </div>
-          <p role="status" className="mt-2 text-sm text-gray-800">{note}</p>
+        <div className="mt-6">
+          <SkillPicker inputId="wp-skills-first" value={value.skills} onChange={(v) => set('skills', v)}
+            invalid={invalid.has('wp-skills-first')} errorId={ERROR_ID} />
         </div>
 
-        <fieldset className="mt-4 max-w-3xl">
+        <fieldset className="mt-4">
           <legend className="field-label">Your most recent job <span className="font-normal text-gray-600">(optional)</span></legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
             <div>
@@ -110,7 +97,7 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
           </div>
         </fieldset>
 
-        <div className="mt-6 space-y-5 max-w-3xl">
+        <div className="mt-6 space-y-5">
           <ChipGroup id="wp-setup" label="Preferred work setup" options={WORK_SETUPS} selected={value.workSetup} onToggle={(v) => toggle('workSetup', v)} />
           <ChipGroup id="wp-at" label="Assistive technology I use" options={ASSISTIVE_TECH} selected={value.assistiveTech} onToggle={(v) => toggle('assistiveTech', v)} />
           <ChipGroup id="wp-acc" label="What I would ask an employer to arrange" options={ACCOMMODATIONS} selected={value.accommodations} onToggle={(v) => toggle('accommodations', v)} />
@@ -121,6 +108,8 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
           <button type="submit" className="btn-primary min-h-11 px-6">Continue</button>
         </div>
       </form>
+      <ProfilePreview value={value} jobs={jobs} />
+      </div>
     </PageCard>
   )
 }

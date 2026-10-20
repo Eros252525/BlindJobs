@@ -31,18 +31,16 @@ blindss/
 │   ├── screens/                One file per page
 │   │   ├── auth/               Welcome guide, Sign in, Register (applicant, employer)
 │   │   │   └── register/       Applicant registration, one file per step (account, work profile,
-│   │   │                       category, finish), plus the step list and the frame around them
+│   │   │                       finish), plus the step list and the frame around them
 │   │   ├── applicant/          Dashboard, Profile (resume), Assessments, Jobs
-│   │   │   ├── dashboard/      My Assessment Scores card on the dashboard
 │   │   │   ├── profile/        The read-only resume (the edit form is ProfileScreen.tsx)
-│   │   │   └── assessments/    Shared by the Assessments page and registration
-│   │   │       ├── skills/     Skills check: intro, one question per page, result
-│   │   │       ├── CategoryList.tsx   Suggested kinds of work
-│   │   │       └── TakenChecks.tsx    Finished checks: score and Retake
+│   │   │   └── assessments/
+│   │   │       └── health/     RAND-36 health survey: consent, question pages, results
 │   │   ├── employer/           Dashboard, Post a Job, Applicants board
 │   │   │   └── applicants/     What an employer reviews in the applicant dialog: job fit,
-│   │   │                       skills-check scores, accommodations
-│   │   └── shared/             Messages (both roles)
+│   │   │                       accommodations
+│   │   └── shared/             Messages (both roles): inbox with Messages, Unread, Pinned and Sent folders
+│   │       └── messages/       Folder list, conversation list, one conversation
 │   │
 │   ├── components/             Pieces used by several screens
 │   │   ├── a11y/               Display + Screen Reader buttons, Display settings dialog, braille
@@ -51,24 +49,37 @@ blindss/
 │   │   ├── nav/                Top navbar, notification bell, account menu
 │   │   ├── toast/              Pop-up messages ("Resume saved")
 │   │   └── ui/                 Form field, password box, error message, dialog, spinner, page card,
-│   │                           progress and score bars
+│   │                           progress and score bars, skill picker, profile photo
 │   │
 │   ├── lib/                    Logic with no UI
 │   │   ├── a11y/
 │   │   │   ├── display-settings.ts   Text size, font, colours, spacing (saved per device)
 │   │   │   ├── screen-reader.ts      Built-in reader (F2 toggles it)
-│   │   │   ├── arrow-navigation.ts   Arrow-key movement between items
 │   │   │   └── braille.ts            Braille dot patterns for letters
 │   │   ├── assessment/
-│   │   │   ├── work-categories.ts    Kinds of work offered, why, and how they are suggested
-│   │   │   ├── question-bank.ts      The random draw of 10 and the weighted score
-│   │   │   └── questions/            The questions, one file per kind of work
-│   │   ├── api.ts              Everything that talks to Supabase
-│   │   ├── legal.ts            Privacy Notice and Terms text, and their versions
-│   │   ├── matching.ts         When a job matches an applicant (skills, location, visual category)
-│   │   ├── job-fit.ts          The 0–100 job-fit score, its reasons, and the ranking of jobs
-│   │   ├── job-search.ts       Search in plain English or Filipino: filters + BM25 ranking
+│   │   │   ├── work-categories.ts    Kinds of work a job can be tagged with
+│   │   │   └── rand36.ts             RAND-36 items, answer choices and RAND's scoring
+│   │   ├── api/                Everything that talks to Supabase; screens import '@/lib/api'
+│   │   │   ├── client.ts             The connection, the key → JSON helpers, the storage layout
+│   │   │   ├── auth.ts               Register and sign in
+│   │   │   ├── profile.ts            Applicant profile
+│   │   │   ├── health.ts             Health survey answers (own row, never on the profile)
+│   │   │   ├── jobs.ts               Job posts
+│   │   │   ├── applications.ts       Applying, and application stages
+│   │   │   ├── notifications.ts      The bell
+│   │   │   ├── messages.ts           Inbox, conversations, pinning and deleting
+│   │   │   └── index.ts              The `api` object the screens use
+│   │   ├── jobs/
+│   │   │   ├── matching.ts           When a job matches an applicant (skills, location, visual category)
+│   │   │   ├── job-fit.ts            The 0–100 job-fit score, its reasons, suggestions and ranking
+│   │   │   └── skills.ts             Skills to search while typing, and recommended skills from job posts
+│   │   ├── job-search.ts       Job search in plain English or Filipino: filters + BM25 ranking
+│   │   ├── documents/
+│   │   │   ├── legal.ts              Privacy Notice and Terms text, their versions, and consent
+│   │   │   └── accessibility-statement.ts  The Accessibility page: WCAG 2.2 criteria, W3C's words, how we meet each
+│   │   ├── session.ts          Signed-in user and open screen, kept for the tab so a reload returns there
 │   │   ├── resume.ts           Resume choices (education levels, assistive tech, …)
+│   │   ├── photo.ts            Shrinks a chosen profile photo to a small square JPEG
 │   │   ├── validation.ts       Required-field checks for forms
 │   │   ├── format.ts           Names, dates, stage colours
 │   │   └── toast.ts            Show a toast from anywhere
@@ -97,73 +108,103 @@ blindss/
 | A page's content or layout | `src/screens/<role>/<Name>Screen.tsx` |
 | The top menu | `src/components/nav/` (links are in `nav-links.ts`) |
 | What the built-in reader says, or its shortcut | `src/lib/a11y/screen-reader.ts` |
-| How the arrow keys move | `src/lib/a11y/arrow-navigation.ts` |
 | Resume fields or their choices | `src/lib/resume.ts`, `src/types.ts`, `ProfileScreen.tsx` |
 | Colours | `src/styles/tokens.css` |
 | Text size / contrast floor | `src/styles/readability.css` |
 | Display settings options (fonts, themes, sizes) | `src/lib/a11y/display-settings.ts` |
 | How a theme colours the app | `src/styles/themes.css` |
-| Saving or loading data | `src/lib/api.ts` |
-| The Privacy Notice or Terms wording | `src/lib/legal.ts` (raise the version when you do) |
-| Who gets told about a new job | `src/lib/matching.ts` |
-| How the job-fit score is worked out, or its weights | `src/lib/job-fit.ts` |
+| Saving or loading data | `src/lib/api/` (one file per kind of data) |
+| The Privacy Notice or Terms wording | `src/lib/documents/legal.ts` (raise the version when you do) |
+| The Accessibility page | `src/lib/documents/accessibility-statement.ts` (W3C's quoted words are never reworded) |
+| Who gets told about a new job | `src/lib/jobs/matching.ts` |
+| How the job-fit score is worked out, or its weights | `src/lib/jobs/job-fit.ts` |
 | Words the job search understands (synonyms, Filipino, places) | `src/lib/job-search.ts` |
-| A skills-check question | `src/lib/assessment/questions/<kind-of-work>.ts` |
-| Add a kind of work | `src/lib/assessment/work-categories.ts`, then a questions file listed in `questions/index.ts` |
+| Add a kind of work | `src/lib/assessment/work-categories.ts` |
 | A step of applicant registration | `src/screens/auth/register/` (order and names in `steps.ts`) |
 
 ## From registration to a job
 
-Applicant registration is one guided flow of five steps. The account is created at the
+Applicant registration is one guided flow of three steps. The account is created at the
 last one, so nothing is stored about someone who stops part-way.
 
-The skills check can be skipped during registration and taken later from the Assessments
-page. To make it compulsory, set `check: true` in `REQUIRED_AT_REGISTRATION`
-(`src/screens/auth/register/steps.ts`): its Skip button then disappears. Separately, an
-employer can tick "Require the skills check to apply" on a job; applying to that job is
-then blocked until the applicant has taken that check.
-
-1. **Account and consent.** Full name, email, password; Privacy Notice and Terms, versions
-   recorded on the account. The email is checked for being free here, not at the end.
+1. **Account and consent.** Full name, username (no email), password; Privacy Notice and
+   Terms, versions recorded on the account. The username is checked for being free here.
 2. **Skills and work preferences.** Disability type, skills, last job, location, work setup,
    assistive technology, accommodations.
-3. **Suggested kinds of work**, from step 2, each with its reasons. The applicant picks one,
-   or skips.
-4. **Skills check.** Ten approved questions drawn at random for that kind of work; a
-   weighted score (basic 1, core 2, critical 3 points). Not timed.
-5. **Create the account.** A summary, then everything is saved and the applicant is signed in.
+3. **Create the account.** A summary, then everything is saved and the applicant is signed in.
 
 After that:
 
-- **Job fit.** Skills 35, skills check 30, work setup 15, location 10, experience 10. Parts a
-  job does not use are dropped and the rest scaled to 100. Jobs are listed best fit first.
-- **Employer review.** The same score and reasons, every skills-check score, the minimum
-  they set, and the accommodations the applicant asked for, with a message to start that
-  conversation.
-- **Assessments page.** Scores, a retake of any check, or a check in another kind of work.
+- **Job fit.** Skills 50, work setup 20, location 15, experience 15. Parts a job does not use
+  are dropped and the rest scaled to 100. Jobs are listed best fit first. Applicants do not
+  see the score (only the order, and a note when a job is limited to other visual
+  categories); employers see it with its reasons when reviewing an applicant.
+- **Job suggestions come from the skills on the profile.** Jobs asking for one of the
+  applicant's skills are suggested best fit first (`suggestJobs` in `src/lib/jobs/job-fit.ts`),
+  on the Jobs page and the dashboard. With no skills on the profile, nothing is suggested.
+- **Employer review.** The same score and reasons, and the accommodations the applicant asked
+  for, with a message to start that conversation.
+- **Assessments page: the health survey (RAND-36).** Must be answered before applying to
+  any job; the Jobs screen and `applyToJob` both check for it. Saved only with its own
+  consent, as `health_assessment:<userId>`, never on the profile (employers are sent the
+  profile). Only the applicant sees the results; it feeds nothing in matching. Item and
+  answer wording is RAND's and must not be reworded (`src/lib/assessment/rand36.ts`).
 
-A RAND-36 health survey was built and then removed, because its results were private to
-the applicant and fed nothing in matching. The code is kept in `_removed/health-survey/`.
+The skills check (a 10-question test per kind of work) was removed on 2026-10-20. Its code
+is kept in `_removed/skills-check/`, with a README on how it was wired in.
 
 Rules that keep this fair, and must survive any change:
 
 - The type of visual disability never enters the job-fit score.
 - A score is never shown without its reasons, and it never blocks an application: a person
   at the employer decides.
-- Assessments are untimed, so nobody is marked down for listening instead of reading.
-- A skills-check question is only drawn when `approved` is true. Have someone who does that
-  work check a new question before approving it.
+- Nothing is timed, so nobody is marked down for listening instead of reading.
+
+## Email: sign-up codes and sign-in alerts
+
+Applicants register with a **username and no email** (`src/lib/username.ts`): many blind
+applicants have no email address. Employers register with a Gmail address
+(`src/lib/gmail.ts` checks Google's username rules); to prove it is real, registration
+emails it a 6-digit code that must be typed back before the account is created. Every
+sign-in to an account that has an email sends it a short alert.
+
+Both are sent by the Edge Function `supabase/functions/blindjobs-email/`, through a
+Gmail account made for Blind Jobs. Until it is deployed, **employers cannot register**:
+the code cannot be sent. Applicants are not affected, and signing in still works.
+
+One-time setup (about 15 minutes):
+
+1. Make a Gmail account for Blind Jobs (e.g. `blindjobs.noreply@gmail.com`). In its
+   Google Account, turn on **2-Step Verification**, then open
+   https://myaccount.google.com/apppasswords and create an app password named
+   "Blind Jobs". Copy the 16 letters.
+2. Install the Supabase CLI: `npm install -g supabase`, then `supabase login`.
+3. In this folder:
+   ```
+   supabase link --project-ref twetarrmrxfdrparsxiz
+   supabase secrets set GMAIL_USER=blindjobs.noreply@gmail.com GMAIL_APP_PASSWORD="abcd efgh ijkl mnop" CODE_SECRET="<any long random text>"
+   supabase functions deploy blindjobs-email
+   ```
+4. Register a test account: the code should arrive within a minute (check Spam).
+
+Limits: Gmail sends about 500 emails a day from one account. A code works for 10 minutes
+and 5 tries; a new one can be asked for once a minute. A sign-in alert goes out at most
+once a minute per account. Keys used: `email_code:<email>` (the code as an HMAC, never the
+code itself), `email_verified:<email>` (deleted once the account is made),
+`login_alert:<email>`.
 
 ## Keyboard
 
 | Key | Does |
 |---|---|
 | Tab / Shift+Tab | Next / previous item |
-| Arrow keys | Move to the nearest item; ↑ reaches the menu |
 | Enter | Press the focused button |
 | Esc | Close a menu or pop-up |
-| Alt+1 … Alt+4 | Jump to a menu section |
-| F2 | Turn the built-in screen reader on or off |
+| F2 | Turn the built-in screen reader on or off (on turning on, it reads the page) |
+| 1 / 2 | Right after the reader has read the page: 1 reads it again, 2 mutes the reader |
+
+The built-in reader starts on and reads the whole page when the app opens. Muting it
+(2 or F2) is remembered, so a reload stays quiet until F2 turns it back on.
 
 ## Accessibility rules for changes
 

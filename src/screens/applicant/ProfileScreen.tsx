@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { focusFirst, missingFields, missingMessage, type RequiredField } from '@/lib/validation'
-import { ACCOMMODATIONS, ASSISTIVE_TECH, EDUCATION_LEVELS, LANGUAGES, MAX_EXPERIENCE, SKILL_CHOICES, WORK_SETUPS } from '@/lib/resume'
+import { ACCOMMODATIONS, ASSISTIVE_TECH, EDUCATION_LEVELS, LANGUAGES, MAX_EXPERIENCE, WORK_SETUPS } from '@/lib/resume'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { FormField } from '@/components/ui/FormField'
+import { PhotoField } from '@/components/ui/PhotoField'
+import { SkillPicker } from '@/components/ui/SkillPicker'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ApplicantProfile, User, WorkExperience } from '@/types'
 import { ResumeView } from './profile/ResumeView'
@@ -33,19 +35,20 @@ const requiredFields = (p: P, skills: string[]): RequiredField[] => [
 // way back into editing. A profile missing required details opens straight in edit.
 export function ProfileScreen({ user }: { user: User }) {
   const [profile, setProfile] = useState<P | null>(null)
-  const [skills, setSkills] = useState(['', '', ''])
+  const [skills, setSkills] = useState<string[]>([])
   const [mode, setMode] = useState<'view' | 'edit'>('edit')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [invalid, setInvalid] = useState<Set<string>>(new Set())
   // last saved version, so Cancel can discard unsaved edits
-  const saved = useRef<{ profile: P; skills: string[] }>({ profile: {}, skills: ['', '', ''] })
+  const saved = useRef<{ profile: P; skills: string[] }>({ profile: {}, skills: [] })
   // element to focus after the next render (mode switch, added/removed experience)
   const pendingFocus = useRef<string | null>(null)
 
   useEffect(() => {
     api.getProfile(user.id).then((p: P) => {
-      const s = p.skills?.length ? p.skills : ['', '', '']
+      // older profiles kept three slots, some of them blank
+      const s = (p.skills || []).filter(Boolean)
       saved.current = { profile: p, skills: s }
       setProfile(p)
       setSkills(s)
@@ -114,7 +117,8 @@ export function ProfileScreen({ user }: { user: User }) {
   return (
     <div className="flex-1 p-4 sm:p-6 pb-24 sm:pb-24">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full p-6 sm:p-8">
-        <div className="mb-6 pb-6 border-b border-gray-200">
+        <div className="mb-6 pb-6 border-b border-gray-200 flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0 flex-1 basis-96">
           <h1 className="text-2xl font-bold text-[#1a4fa0]">{hasSavedResume ? 'Edit your resume' : 'Build your resume'}</h1>
           <p className="text-sm text-gray-600 mt-1 max-w-3xl">
             Fields marked required are needed to apply. Everything else is optional, but a fuller resume helps employers understand your skills.
@@ -129,6 +133,11 @@ export function ProfileScreen({ user }: { user: User }) {
               ))}
             </ul>
           </nav>
+          </div>
+          {/* top-right on wide screens; under the heading on a phone. In the DOM after the
+              heading and section links, so Tab reaches it before the form fields */}
+          <PhotoField id="pf-photo" stacked name={[profile.firstName, profile.lastName].filter(Boolean).join(' ') || user.name}
+            value={profile.photoUrl} onChange={(v) => set('photoUrl', v)} />
         </div>
 
         <EditSection id="pf-sec-personal" title="Personal information">
@@ -162,11 +171,9 @@ export function ProfileScreen({ user }: { user: User }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
             <div>
               {/* Set at registration and used to sign in, so it can't be edited here */}
-              <label htmlFor="pf-email" className="field-label">Gmail username <span className="font-normal text-gray-600">(can't be changed)</span></label>
-              <div className="flex">
-                <input id="pf-email" className="input rounded-r-none flex-1 min-w-0 bg-gray-50" value={(profile.email || '').replace('@gmail.com', '')} readOnly aria-describedby="pf-email-suffix" />
-                <span id="pf-email-suffix" className="flex items-center px-2 border border-l-0 border-gray-500 rounded-r-md bg-gray-50 text-gray-600 text-xs">@gmail.com</span>
-              </div>
+              {/* Applicants sign in with a username (older accounts with an email address) */}
+              <label htmlFor="pf-email" className="field-label">{profile.email ? 'Email address' : 'Username'} <span className="font-normal text-gray-600">(used to sign in, can't be changed)</span></label>
+              <input id="pf-email" className="input bg-gray-50" value={profile.email || profile.username || ''} readOnly />
             </div>
             <FormField id="pf-mobile" label="Mobile number" required>
               <div className="flex">
@@ -193,42 +200,9 @@ export function ProfileScreen({ user }: { user: User }) {
         </EditSection>
 
         <EditSection id="pf-sec-skills" title="Skills">
-          <p id="pf-skills" className="field-label">Top 3 skills <span className="text-gray-600 font-normal normal-case">(required, at least one — pick up to 3)</span></p>
-          <div role="group" aria-labelledby="pf-skills" className="flex flex-wrap gap-2 mb-2">
-            {SKILL_CHOICES.map(s => {
-              const idx = skills.indexOf(s)
-              const selected = idx !== -1
-              const full = !selected && skills.filter(Boolean).length >= 3
-              return (
-                <button type="button" key={s} disabled={full} aria-pressed={selected}
-                  onClick={() => setSkills(prev => {
-                    if (selected) { const n = [...prev]; n[idx] = ''; return n }
-                    const empty = prev.findIndex(x => !x)
-                    if (empty === -1) return prev
-                    const n = [...prev]; n[empty] = s; return n
-                  })}
-                  className={`text-sm px-3 py-1.5 rounded-full border font-medium transition-colors
-                    ${selected ? 'bg-[#1a4fa0] text-white border-[#1a4fa0]' : full ? 'bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed' : 'bg-white text-gray-600 border-gray-500 hover:border-[#1a4fa0] hover:text-[#1a4fa0]'}`}>
-                  {selected ? '✓ ' : ''}{s}
-                </button>
-              )
-            })}
-          </div>
-          <p className="text-sm text-gray-600 mb-2">Or type your own, one in each box:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="relative">
-                <input id={`pf-skill-${i}`} className="input pr-9" aria-label={`Skill ${i + 1}`}
-                  placeholder={`Custom skill ${i + 1}`} {...(i === 0 ? errorFor('pf-skill-0') : {})}
-                  value={skills[i] || ''} onChange={(e) => setSkills(s => { const n = [...s]; n[i] = e.target.value; return n })} />
-                {skills[i] && (
-                  <button type="button" onClick={() => setSkills(s => { const n = [...s]; n[i] = ''; return n })}
-                    aria-label={`Clear skill ${i + 1}: ${skills[i]}`}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center rounded text-gray-600 hover:bg-gray-100 text-xs"><span aria-hidden="true">✕</span></button>
-                )}
-              </div>
-            ))}
-          </div>
+          {/* the same picker as registration: common skills to tap, or any skill typed in */}
+          <SkillPicker inputId="pf-skill-0" value={skills} invalid={invalid.has('pf-skill-0')} errorId={ERROR_ID}
+            onChange={setSkills} />
         </EditSection>
 
         <EditSection id="pf-sec-education" title="Education and training">

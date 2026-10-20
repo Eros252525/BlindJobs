@@ -14,9 +14,9 @@ export function useStepFocus<T extends HTMLElement>(step: unknown, spoken: strin
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    window.__remoteNavFocusing = true // the announcement below says more than the heading alone
+    window.__quietFocus = true // the announcement below says more than the heading alone
     el.focus({ preventScroll: true })
-    window.__remoteNavFocusing = false
+    window.__quietFocus = false
     el.scrollIntoView({ block: 'start' })
     sr.announce(spokenRef.current)
   }, [step])

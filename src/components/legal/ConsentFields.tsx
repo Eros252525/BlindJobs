@@ -1,8 +1,8 @@
-import { consentLabel, openLegal, type Consent, type LegalDocId } from '@/lib/legal'
+import { consentLabel, openLegal, type Consent, type ConsentDocId } from '@/lib/documents/legal'
 import type { RequiredField } from '@/lib/validation'
 import type { Role } from '@/types'
 
-const DOCS: { doc: LegalDocId; name: string }[] = [
+const DOCS: { doc: ConsentDocId; name: string }[] = [
   { doc: 'privacy', name: 'Privacy Notice' },
   { doc: 'terms', name: 'Terms and Conditions' },
 ]

@@ -1,9 +1,8 @@
-import { fitLabel, jobFit } from '@/lib/job-fit'
+import { fitLabel, jobFit } from '@/lib/jobs/job-fit'
 import type { Applicant } from '@/types'
-import { SkillsScores } from './SkillsScores'
 
-// What the employer reviews before deciding: the explained fit score, every
-// skills check the applicant has taken, and what the applicant has asked for.
+// What the employer reviews before deciding: the explained fit score, and what
+// the applicant has asked for.
 export function FitAndAccommodations({ applicant }: { applicant: Applicant }) {
   const fit = applicant.job ? jobFit(applicant.job, applicant.profile) : null
   const asked = applicant.profile?.accommodations || []
@@ -25,8 +24,6 @@ export function FitAndAccommodations({ applicant }: { applicant: Applicant }) {
           </p>
         </section>
       )}
-
-      <SkillsScores applicant={applicant} />
 
       <section aria-labelledby="ats-acc" className="rounded-lg border border-gray-200 px-4 py-3">
         <h3 id="ats-acc" className="text-sm font-bold text-[#1a4fa0]">Accommodations to discuss</h3>
