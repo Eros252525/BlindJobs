@@ -24,7 +24,7 @@ export function AccessibilityBar({ srEnabled, onToggleSr }: { srEnabled: boolean
           <kbd className="a11y-toggle-key">F2</kbd>
         </button>
       </div>
-      {/* outside the bar: arrow navigation skips the bar's own buttons, not the dialog */}
+      {/* outside the bar, so the bar's zoom setting does not shrink the dialog */}
       {open && <DisplaySettingsDialog settings={settings} onChange={update} onClose={() => setOpen(false)} />}
     </>
   )

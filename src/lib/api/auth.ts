@@ -1,0 +1,131 @@
+// Registering and signing in.
+import { consentRecord } from '@/lib/documents/legal'
+import { gmailAddress, gmailProblem } from '@/lib/gmail'
+import { normalizeUsername, usernameProblem } from '@/lib/username'
+import { kvDelete, kvGet, kvSet } from './client'
+import { sendLoginAlert } from './email'
+
+async function hashPassword(password: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+// Users type either "name" or a full "name@domain" into the username box, with
+// stray spaces/capitals. Normalize to one canonical lowercase email.
+function normalizeEmail(input: string): string {
+  const v = (input || '').trim().toLowerCase()
+  return v.includes('@') ? v : `${v}@gmail.com`
+}
+
+// Older accounts were stored under `${rawInput}@gmail.com` (e.g. "a@b.com@gmail.com",
+// "One@gmail.com"), so also try those keys to keep them able to log in.
+async function findUserByEmail(input: string): Promise<any> {
+  const raw = input || ''
+  const candidates = [...new Set([
+    normalizeEmail(raw),
+    `${raw}@gmail.com`,
+    `${raw.trim()}@gmail.com`,
+    `${raw.trim().toLowerCase()}@gmail.com`,
+  ])]
+  for (const email of candidates) {
+    const entry = await kvGet(`user_by_email:${email}`)
+    if (entry) return { entry, email }
+  }
+  return null
+}
+
+/** False when an account already uses this email. */
+export async function emailAvailable(email: string): Promise<boolean> {
+  return !(await findUserByEmail(email))
+}
+
+/**
+ * False when an applicant already has this username, or when it would clash with
+ * an older account that signs in by typing only the part of its Gmail before the @.
+ */
+export async function usernameAvailable(username: string): Promise<boolean> {
+  const name = normalizeUsername(username)
+  return !(await kvGet(`user_by_username:${name}`)) && !(await kvGet(`user_by_email:${name}@gmail.com`))
+}
+
+// What was typed in the sign-in box: an applicant's username, or an email address
+// (employers, and applicants who registered before usernames).
+async function findUser(input: string): Promise<{ entry: any } | null> {
+  const typed = (input || '').trim()
+  if (typed && !typed.includes('@')) {
+    const entry = await kvGet(`user_by_username:${normalizeUsername(typed)}`)
+    if (entry) return { entry }
+  }
+  return findUserByEmail(input)
+}
+
+export async function register(body: Record<string, any>) {
+  const { role, username, emailUsername, password, firstName, lastName, middleName, suffix, mobile, gender, disabilityType, skills, companyName, consent } = body
+  if (!password) throw new Error('Password is required')
+  // No account without consent, whatever the form did (Data Privacy Act, RA 10173)
+  if (!consent?.privacy || !consent?.terms) throw new Error('You must agree to the Privacy Notice and the Terms and Conditions')
+  const id = crypto.randomUUID()
+  const hashed = await hashPassword(password)
+  const createdAt = new Date().toISOString()
+
+  // Applicants: a username, no email (many blind applicants have none)
+  if (role === 'applicant') {
+    if (!username?.trim()) throw new Error('Username is required')
+    // Checked here as well as in the form, so no way of registering gets round it
+    const problem = usernameProblem(username)
+    if (problem) throw new Error(problem)
+    const name = normalizeUsername(username)
+    if (!(await usernameAvailable(name))) throw new Error('That username is taken. Choose another one.')
+    // `consent` is the record of what was agreed to: document versions and the time
+    await kvSet(`user:${id}`, { id, role, username: name, email: '', password: hashed, createdAt, consent: consentRecord() })
+    await kvSet(`user_by_username:${name}`, { userId: id })
+    await kvSet(`applicant_profile:${id}`, {
+      userId: id, username: name, firstName: firstName || '', lastName: lastName || '',
+      middleName: middleName || '', suffix: suffix || '', email: '',
+      mobile: mobile || '', gender: gender || '', disabilityType: disabilityType || '',
+      skills: skills || [], photoUrl: null,
+    })
+    return { id, role, email: name, name: `${firstName} ${lastName}`.trim() || name }
+  }
+
+  // Employers: a Gmail address, proved real with an emailed code
+  if (!emailUsername?.trim()) throw new Error('Gmail address is required')
+  const problem = gmailProblem(emailUsername)
+  if (problem) throw new Error(problem)
+  const email = gmailAddress(emailUsername)
+  if (await findUserByEmail(email)) throw new Error('Email already registered')
+  // Set by the email function once the code sent to this address was typed back
+  if (!(await kvGet(`email_verified:${email}`))) throw new Error('Please confirm your Gmail address first, with the code we emailed to it.')
+  await kvSet(`user:${id}`, { id, role, email, password: hashed, createdAt, consent: consentRecord() })
+  await kvSet(`user_by_email:${email}`, { userId: id })
+  await kvDelete(`email_verified:${email}`)
+  await kvSet(`employer_profile:${id}`, { userId: id, companyName: companyName || email, email })
+  return { id, role, email, name: companyName || email }
+}
+
+export async function login(emailOrUsername: string, password: string, role: string) {
+  const found = await findUser(emailOrUsername)
+  if (!found) throw new Error('No account found with that username or email. Check the spelling or create an account.')
+  const user = await kvGet(`user:${found.entry.userId}`)
+  if (!user) throw new Error('Invalid credentials')
+  // Support both hashed and legacy plaintext passwords
+  const hashed = await hashPassword(password)
+  if (user.password !== hashed && user.password !== password) throw new Error('Incorrect password')
+  if (user.role !== role) {
+    const label = user.role === 'employer' ? 'Employer' : 'Applicant'
+    throw new Error(`This account is registered as an ${label}. Select "${label}" and try again.`)
+  }
+  // Only accounts with an email get the sign-in alert
+  if (user.email) sendLoginAlert(user.email)
+  // `email` on the signed-in user is what they sign in with: the email, or the username
+  const signIn: string = user.email || user.username
+  if (role === 'applicant') {
+    const p = await kvGet(`applicant_profile:${user.id}`)
+    return { id: user.id, role, email: signIn, name: p ? `${p.firstName} ${p.lastName}`.trim() || signIn : signIn }
+  } else {
+    const p = await kvGet(`employer_profile:${user.id}`)
+    return { id: user.id, role, email: signIn, name: p?.companyName || signIn }
+  }
+}

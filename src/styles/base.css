@@ -1,5 +1,14 @@
 /* Keep arrow-key/Tab focus targets from scrolling under the sticky navbar (top) and
    the fixed Screen Reader button (bottom) — WCAG 2.4.11 Focus Not Obscured. */
+/* Jobs page from tablet width up: the list and the job details fill the window
+   below the navbar and each scroll on their own, so scrolling a long list never
+   scrolls the details out of sight. At 175% and 200% text the two stack (see
+   themes.css) and the page scrolls as one again. */
+@media (min-width: 48rem) {
+  .jobs-split { height: calc(100dvh - var(--nav-h, 4.5rem)); }
+}
+:root:is([data-size='175'], [data-size='200']) .jobs-split { height: auto; }
+
 html {
   /* rem, so it grows with the chosen text size along with the navbar */
   scroll-padding-top: 5.5rem;

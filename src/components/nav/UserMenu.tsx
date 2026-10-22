@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useDismiss } from '@/hooks/useDismiss'
 import { initials } from '@/lib/format'
 import { openDisplaySettings } from '@/lib/a11y/display-settings'
-import { openLegal } from '@/lib/legal'
+import { openLegal } from '@/lib/documents/legal'
 import type { Screen, User } from '@/types'
 import type { NavLink } from './nav-links'
 
@@ -53,6 +53,9 @@ export function UserMenu({ user, onNavigate, items }: {
             </button>
             <button data-speak="Terms and Conditions" onClick={() => { setOpen(false); openLegal('terms') }} className="nav-menu-item">
               <span aria-hidden="true">📄</span>Terms and Conditions
+            </button>
+            <button data-speak="Accessibility: the WCAG guidelines Blind Jobs follows" onClick={() => { setOpen(false); openLegal('accessibility') }} className="nav-menu-item">
+              <span aria-hidden="true">♿</span>Accessibility
             </button>
           </div>
           <div className="py-1 border-t border-gray-100">

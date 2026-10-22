@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { stageColor } from '@/lib/format'
+import { fitLabel, jobFit } from '@/lib/jobs/job-fit'
 import { toast } from '@/lib/toast'
 import { KANBAN_COLS } from '@/constants'
 import { useUpdateTick } from '@/hooks/useUpdateTick'
 import { ModalDialog } from '@/components/ui/ModalDialog'
 import { Spinner } from '@/components/ui/Spinner'
 import type { Applicant, Conversation, Job, User } from '@/types'
+import { FitAndAccommodations } from './applicants/FitAndAccommodations'
 
 export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initialJobId?: string | null }) {
   const [applicants, setApplicants] = useState<Applicant[]>([])
   const [filter, setFilter] = useState('All Posted Jobs')
   const [jobs, setJobs] = useState<Job[]>([])
   const [modal, setModal] = useState<Applicant | null>(null)
-  const [modalStep, setModalStep] = useState<'main' | 'hire' | 'reject'>('main')
+  const [modalStep, setModalStep] = useState<'main' | 'hire' | 'reject' | 'discuss'>('main')
   const [responseMsg, setResponseMsg] = useState('')
   const [updating, setUpdating] = useState(false)
 
@@ -32,7 +34,12 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
     }).catch(() => {})
   }, [user.id, initialJobId])
 
-  const filtered = filter === 'All Posted Jobs' ? applicants : applicants.filter(a => a.jobTitle === filter)
+  // The same score and reasons the applicant sees on the Jobs page (job-fit.ts)
+  const fitOf = (a: Applicant) => (a.job ? jobFit(a.job, a.profile) : null)
+
+  const filtered = (filter === 'All Posted Jobs' ? applicants : applicants.filter(a => a.jobTitle === filter))
+    // best fit first within each column
+    .map(a => ({ a, score: fitOf(a)?.score ?? -1 })).sort((x, y) => y.score - x.score).map(x => x.a)
 
   const openModal = (a: Applicant) => { setModal(a); setModalStep('main'); setResponseMsg('') }
   const closeModal = () => { setModal(null); setModalStep('main'); setResponseMsg('') }
@@ -72,6 +79,40 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
       closeModal()
     } catch (e: any) { toast(`Couldn't finish: ${e.message}`, 'error') }
     finally { setUpdating(false) }
+  }
+
+  // Opens (or continues) the conversation for this application with a message about
+  // accommodations. The stage is left alone: asking what someone needs is not a decision.
+  const handleSendAccommodationMessage = async () => {
+    if (!modal || !responseMsg.trim()) return
+    setUpdating(true)
+    try {
+      const convs = await api.getConversations(user.id)
+      let conv = convs.find((c: Conversation) => c.applicantId === modal.applicantId && c.jobId === modal.jobId)
+      if (!conv) {
+        conv = await api.createConversation({
+          applicantId: modal.applicantId, employerId: user.id,
+          applicantName: fullName(modal), employerName: user.name,
+          jobTitle: modal.jobTitle, jobId: modal.jobId,
+        })
+      }
+      await api.sendMessage(conv.id, user.id, user.name, responseMsg.trim())
+      toast('Message sent. The conversation is on the Messages page.', 'success')
+      setModalStep('main'); setResponseMsg('')
+    } catch (e: any) { toast(`Message not sent: ${e.message}`, 'error') }
+    finally { setUpdating(false) }
+  }
+
+  const startDiscussion = (a: Applicant) => {
+    const asked = a.profile?.accommodations || []
+    const first = a.profile?.firstName?.trim()
+    setResponseMsg(
+      `Hello${first ? ` ${first}` : ''}, thank you for applying for ${a.jobTitle}. ` +
+      (asked.length
+        ? `Your profile says you would ask for: ${asked.join('; ')}. We would like to talk about how to arrange these. `
+        : 'We would like to make sure you have what you need to do this job well. ') +
+      'Is there anything else that would help you at work, or during the interview?')
+    setModalStep('discuss')
   }
 
   const fullName = (a: Applicant) =>
@@ -114,6 +155,11 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                     className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 shadow-sm mb-2 hover:shadow-md hover:border-[#1a4fa0] transition-all">
                     <p className="text-sm font-semibold text-gray-900">{fullName(a)}</p>
                     <p className="text-xs text-gray-600 mb-2">{a.jobTitle}</p>
+                    {fitOf(a) && (
+                      <span className="inline-flex items-center mr-1 mb-1 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                        {fitLabel(fitOf(a)!.score)}: {fitOf(a)!.score}/100
+                      </span>
+                    )}
                     {a.profile?.disabilityType && (
                       <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] px-2 py-0.5 rounded-full border border-blue-200">
                         <span aria-hidden="true">♿</span> {a.profile.disabilityType}
@@ -131,8 +177,11 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
       {modal && (
         <ModalDialog labelledBy="ats-dialog-title" onClose={closeModal} returnFocusTo={`[data-card="${modal.jobId}:${modal.applicantId}"]`}>
             {/* Modal header */}
-            <div className="px-6 pt-6 pb-4 flex items-start justify-between">
-              <div>
+            <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4">
+              {modal.profile?.photoUrl && (
+                <img src={modal.profile.photoUrl} alt={`Photo of ${fullName(modal)}`} className="w-16 h-16 shrink-0 rounded-full object-cover border border-gray-300" />
+              )}
+              <div className="flex-1 min-w-0">
                 <h2 id="ats-dialog-title" className="text-lg font-bold text-[#1a4fa0]">{fullName(modal)}</h2>
                 <p className="text-sm text-gray-600 mt-0.5">
                   Candidate for: <span className="font-semibold text-gray-700">
@@ -149,7 +198,7 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                 <p className="text-sm text-gray-800 whitespace-pre-line mb-3 border-l-4 border-[#1a4fa0] pl-3">{modal.profile.about}</p>
               )}
               <div className="bg-gray-50 rounded-lg px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-4">
-                <div><span className="font-semibold">Email:</span> <span className="text-gray-700">{modal.profile?.email || '—'}</span></div>
+                <div><span className="font-semibold">Email:</span> <span className="text-gray-700">{modal.profile?.email || 'None. Reach this applicant in Messages or by phone.'}</span></div>
                 <div><span className="font-semibold">Disability:</span> <span className="text-gray-700">{modal.profile?.disabilityType || '—'}</span></div>
                 <div><span className="font-semibold">Phone:</span> <span className="text-gray-700">{modal.profile?.mobile || '—'}</span></div>
                 <div><span className="font-semibold">Location:</span> <span className="text-gray-700">{modal.profile?.location || '—'}</span></div>
@@ -167,6 +216,8 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                 </div>
               </div>
 
+              <FitAndAccommodations applicant={modal} />
+
               {/* Step: main */}
               {modalStep === 'main' && (
                 <>
@@ -178,6 +229,10 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                       {KANBAN_COLS.map(s => <option key={s}>{s}</option>)}
                     </select>
                   </div>
+                  <button onClick={() => startDiscussion(modal)}
+                    className="w-full mb-3 min-h-11 bg-white border border-[#1a4fa0] text-[#1a4fa0] hover:bg-blue-50 font-semibold rounded-full py-2.5 text-sm flex items-center justify-center gap-2 transition-colors">
+                    <span aria-hidden="true">💬</span> Discuss accommodations
+                  </button>
                   <div className="flex gap-3 pt-2">
                     <button onClick={() => setModalStep('hire')}
                       className="flex-1 bg-[#1a7a3c] hover:bg-[#155f30] text-white font-semibold rounded-full py-2.5 text-sm flex items-center justify-center gap-2 transition-colors">
@@ -206,6 +261,30 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                       {updating ? <Spinner label="Hiring" /> : 'Send & Hire'}
                     </button>
                     <button onClick={() => setModalStep('main')}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-full px-6 py-2.5 text-sm transition-colors">
+                      Back
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Step: discuss accommodations */}
+              {modalStep === 'discuss' && (
+                <>
+                  <div className="mb-4">
+                    <label htmlFor="ats-msg-discuss" className="text-sm font-semibold text-gray-800 block mb-2">Message about accommodations</label>
+                    <textarea id="ats-msg-discuss" className="input resize-none h-36 text-sm" aria-describedby="ats-msg-discuss-help"
+                      value={responseMsg} onChange={(e) => setResponseMsg(e.target.value)} />
+                    <p id="ats-msg-discuss-help" className="mt-1 text-xs text-gray-600">
+                      A draft to edit. Ask what the applicant needs rather than deciding for them. Sending it does not change their stage.
+                    </p>
+                  </div>
+                  <div className="flex gap-3 justify-end">
+                    <button onClick={handleSendAccommodationMessage} disabled={updating || !responseMsg.trim()}
+                      className="bg-[#1a4fa0] hover:bg-[#1558a8] text-white font-semibold rounded-full px-6 py-2.5 text-sm flex items-center gap-2 transition-colors disabled:opacity-60">
+                      {updating ? <Spinner label="Sending" /> : 'Send message'}
+                    </button>
+                    <button onClick={() => { setModalStep('main'); setResponseMsg('') }}
                       className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-full px-6 py-2.5 text-sm transition-colors">
                       Back
                     </button>
