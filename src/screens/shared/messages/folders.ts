@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n'
 import type { InboxThread } from '@/types'
 
 // The inbox folders, in the order they are listed. Each is a view of the same
@@ -11,7 +12,8 @@ export const FOLDERS: { id: FolderId; label: string; icon: string; empty: string
   { id: 'sent', label: 'Sent', icon: '📤', empty: 'Nothing sent yet. Your job applications and the messages you write appear here.' },
 ]
 
-export const inFolder = (t: InboxThread, f: FolderId) =>
-  f === 'unread' ? t.unread > 0 : f === 'pinned' ? t.pinned : f === 'sent' ? t.sentByMe : true
+export const inFolder = (item: InboxThread, f: FolderId) =>
+  f === 'unread' ? item.unread > 0 : f === 'pinned' ? item.pinned : f === 'sent' ? item.sentByMe : true
 
-export const folderLabel = (f: FolderId) => FOLDERS.find(x => x.id === f)!.label
+// Labels are English here; shown through t()
+export const folderLabel = (f: FolderId) => t(FOLDERS.find(x => x.id === f)!.label)

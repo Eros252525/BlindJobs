@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import { t } from '@/lib/i18n'
 import { RAND36_STEPS, type Rand36Answers } from '@/lib/assessment/rand36'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { ProgressBar } from '@/components/ui/Meter'
@@ -38,7 +39,7 @@ export function QuestionsPage({ headingRef, index, answers, busy, error, leaveLa
       </p>
       {step.note && (
         <p className="mt-4 text-sm text-gray-800 bg-gray-50 rounded-lg border-l-4 border-[#1a4fa0] px-4 py-3">
-          <strong>Note from Blind Jobs, not part of the survey:</strong> {step.note}
+          <strong>{t('Note from Blind Jobs, not part of the survey:')}</strong> {step.note}
         </p>
       )}
 
@@ -60,18 +61,18 @@ export function QuestionsPage({ headingRef, index, answers, busy, error, leaveLa
       })}
 
       <p role="status" className="mt-6 text-sm font-semibold text-gray-800">
-        {answeredHere} of {items.length} answered on this page; {answeredAll} of 36 in all.
+        {t('{here} of {total} answered on this page; {all} of 36 in all.', { here: answeredHere, total: items.length, all: answeredAll })}
       </p>
       <ErrorMsg id={ERROR_ID} msg={error} />
       <div className="mt-4 flex flex-wrap gap-3">
         {last ? (
           <button type="button" onClick={onFinish} disabled={busy} aria-busy={busy} className="btn-primary min-h-11 px-6 flex items-center gap-2 disabled:opacity-70">
-            {busy ? <Spinner label="Saving" /> : 'Finish and see my results'}
+            {busy ? <Spinner label={t('Saving')} /> : 'Finish and see my results'}
           </button>
         ) : (
-          <button type="button" onClick={onNext} className="btn-primary min-h-11 px-6">Next page</button>
+          <button type="button" onClick={onNext} className="btn-primary min-h-11 px-6">{t('Next page')}</button>
         )}
-        {index > 0 && <button type="button" onClick={onPrevious} className={BTN_SECONDARY}>Previous page</button>}
+        {index > 0 && <button type="button" onClick={onPrevious} className={BTN_SECONDARY}>{t('Previous page')}</button>}
         {leaveLabel && <button type="button" onClick={onLeave} className={BTN_SECONDARY}>{leaveLabel}</button>}
       </div>
       <Credit />

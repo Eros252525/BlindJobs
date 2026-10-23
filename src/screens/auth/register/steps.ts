@@ -1,5 +1,5 @@
 // Applicant registration, in the order an applicant goes through it. The account
-// is only created at the last step.
+// is only created at the last step. Names are English here; screens show t(STEP_NAMES[step]).
 export const STEPS = ['account', 'profile', 'finish'] as const
 
 export type Step = (typeof STEPS)[number]
@@ -13,4 +13,9 @@ export const STEP_NAMES: Record<Step, string> = {
 /** A step's place in the flow, from 1. */
 export const stepNumber = (step: Step) => STEPS.indexOf(step) + 1
 
-export type AccountForm = { fullName: string; username: string; password: string }
+export type AccountForm = { firstName: string; middleName: string; lastName: string; mobile: string; username: string; password: string }
+
+export const EMPTY_ACCOUNT_FORM: AccountForm = { firstName: '', middleName: '', lastName: '', mobile: '', username: '', password: '' }
+
+/** "Juan Santos Dela Cruz": the name as the summary shows it. */
+export const accountName = (f: AccountForm) => [f.firstName, f.middleName, f.lastName].map(s => s.trim()).filter(Boolean).join(' ')

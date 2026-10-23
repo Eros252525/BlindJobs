@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { t } from '@/lib/i18n'
 import type { Screen, User } from '@/types'
 import { NavBell } from './NavBell'
 import { UserMenu } from './UserMenu'
@@ -52,9 +53,9 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
   useEffect(() => { setMobileOpen(false) }, [active])
 
   return (
-    <nav ref={navRef} aria-label="Main" data-nav-zone="navbar"
+    <nav ref={navRef} aria-label={t('Main')} data-nav-zone="navbar"
       className={`app-nav w-full px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 shrink-0 sticky top-0 z-40 ${scrolled ? 'is-scrolled' : ''}`}>
-      <button type="button" onClick={() => onNavigate(home)} data-speak="blind jobs, home" aria-label="Blind Jobs, home"
+      <button type="button" onClick={() => onNavigate(home)} data-speak="blind jobs, home" aria-label={t('Blind Jobs, home')}
         className="nav-logo text-lg font-bold flex items-center gap-2.5 shrink-0">
         <img src="/images/logo.jpg" alt="" className="nav-logo-mark" />
         <span aria-hidden="true"><span className="text-[#1a4fa0]">blind</span><span className="text-gray-900">jobs</span></span>
@@ -72,9 +73,9 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
               ref={el => { if (el) linkRefs.current.set(l.target, el); else linkRefs.current.delete(l.target) }}
               onClick={() => onNavigate(l.target)}
               aria-current={isActive ? 'page' : undefined}
-              data-speak={isActive ? `${l.label}, current page` : l.label}
+              data-speak={isActive ? t('{page}, current page', { page: t(l.label) }) : t(l.label)}
               className={`nav-link ${isActive ? 'nav-link-active' : ''}`}>
-              <span aria-hidden="true" className="nav-link-icon">{l.icon}</span>{l.label}
+              <span aria-hidden="true" className="nav-link-icon">{l.icon}</span>{t(l.label)}
             </button>
           )
         })}
@@ -86,7 +87,7 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
         <UserMenu user={user} onNavigate={onNavigate} items={menuItems} />
         <button onClick={() => setMobileOpen(o => !o)} aria-expanded={mobileOpen} aria-controls="nav-mobile"
           aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-          data-speak={mobileOpen ? 'Close menu' : 'Open menu'} className="nav-burger md:hidden">
+          data-speak={mobileOpen ? t('Close menu') : t('Open menu')} className="nav-burger md:hidden">
           <span aria-hidden="true" className={mobileOpen ? 'is-open' : ''}><i /><i /><i /></span>
         </button>
       </div>
@@ -95,9 +96,9 @@ export function AppNav({ active, user, onNavigate, home, links, msgScreen, menuI
         <div id="nav-mobile" className="nav-mobile md:hidden">
           {links.map(l => (
             <button key={l.target} onClick={() => onNavigate(l.target)}
-              aria-current={active === l.target ? 'page' : undefined} data-speak={l.label}
+              aria-current={active === l.target ? 'page' : undefined} data-speak={t(l.label)}
               className={`nav-mobile-link ${active === l.target ? 'is-active' : ''}`}>
-              <span aria-hidden="true">{l.icon}</span>{l.label}
+              <span aria-hidden="true">{l.icon}</span>{t(l.label)}
             </button>
           ))}
         </div>

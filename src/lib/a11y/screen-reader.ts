@@ -7,7 +7,17 @@ declare global {
   }
 }
 
+import { speechLang, t } from '@/lib/i18n'
+
 const synth = window.speechSynthesis
+
+// Every line is spoken in the page's language, so a Filipino voice is used when the
+// device has one; without one the browser reads Filipino with its default voice.
+function utter(text: string) {
+  const utt = new SpeechSynthesisUtterance(text)
+  utt.lang = speechLang()
+  return utt
+}
 
 // ── Screen Reader (TTS) ───────────────────────────────────────────────────────
 
@@ -19,7 +29,7 @@ let onToggleCb: ((v: boolean) => void) | null = null
 export function speak(text: string, interrupt = true) {
   if (!enabled || !text.trim()) return
   if (interrupt) synth.cancel()
-  const utt = new SpeechSynthesisUtterance(text.trim())
+  const utt = utter(text.trim())
   utt.rate = 1.0
   utt.pitch = 1.0
   utt.volume = 1.0
@@ -29,7 +39,7 @@ export function speak(text: string, interrupt = true) {
 export function announce(text: string) {
   if (!enabled) return
   synth.cancel()
-  const utt = new SpeechSynthesisUtterance(text)
+  const utt = utter(text)
   utt.rate = 0.95
   utt.pitch = 1.05
   synth.speak(utt)
@@ -49,16 +59,16 @@ function saveMuted(muted: boolean) {
   try { localStorage.setItem(MUTED_KEY, muted ? '1' : '0') } catch { /* private mode: lasts for this visit */ }
 }
 
-function setEnabled(on: boolean, offMessage = 'Screen reader off. Press F2 to turn it back on.') {
+function setEnabled(on: boolean, offMessage = t('Screen reader off. Press F2 to turn it back on.')) {
   enabled = on
   saveMuted(!on)
   onToggleCb?.(enabled)
   if (on) {
-    readScreen('Screen reader on.')
+    readScreen(t('Screen reader on.'))
   } else {
     choiceOpen = false
     synth.cancel()
-    synth.speak(new SpeechSynthesisUtterance(offMessage))
+    synth.speak(utter(offMessage))
   }
 }
 
@@ -66,9 +76,7 @@ export function toggle() { setEnabled(!enabled) }
 
 // ── Read the whole screen ─────────────────────────────────────────────────────
 
-const PROMPT =
-  'End of page. To hear this page again, press 1. To mute the screen reader, press 2. ' +
-  'Use Tab to move between items. Press F2 at any time to turn the screen reader on or off.'
+const prompt = () => t('End of page. To hear this page again, press 1. To mute the screen reader, press 2. Use Tab to move between items. Press F2 at any time to turn the screen reader on or off.')
 
 // After a full read, 1 (repeat) and 2 (mute) are live until the user does anything
 // else, so the digits stay free for typing and for other shortcuts (WCAG 2.1.4).
@@ -140,9 +148,9 @@ export function readScreen(intro = '') {
   if (!enabled) return
   synth.cancel()
   choiceOpen = true
-  const parts = [intro, ...(script ?? pageLines()), PROMPT].filter(Boolean)
+  const parts = [intro, ...(script ?? pageLines()), prompt()].filter(Boolean)
   parts.forEach((text, i) => {
-    const utt = new SpeechSynthesisUtterance(text)
+    const utt = utter(text)
     if (i === 0) {
       utt.onerror = (e) => {
         if (e.error === 'not-allowed') { waitingForGesture = true; pendingIntro = intro }
@@ -264,7 +272,7 @@ function onKeyDown(e: KeyboardEvent) {
 
   if (choiceOpen && enabled && !e.shiftKey && !isTyping(e.target)) {
     if (e.key === '1') { e.preventDefault(); readScreen(); return }
-    if (e.key === '2') { e.preventDefault(); setEnabled(false, 'Screen reader muted. Press F2 to turn it back on.'); return }
+    if (e.key === '2') { e.preventDefault(); setEnabled(false, t('Screen reader muted. Press F2 to turn it back on.')); return }
   }
   choiceOpen = false
 }
@@ -298,7 +306,9 @@ export function init(cb: (v: boolean) => void) {
   // to load its data before reading it.
   enabled = !loadMuted()
   cb(enabled)
-  const start = enabled ? window.setTimeout(() => readScreen('Welcome to Blind Jobs.'), 1000) : 0
+  // People who already use NVDA, JAWS or TalkBack would hear two voices at once, so
+  // the first thing said is how to mute this one (2 works straight away)
+  const start = enabled ? window.setTimeout(() => readScreen(t('Welcome to Blind Jobs. If you already use your own screen reader, such as NVDA or TalkBack, press 2 now to mute this one.')), 1000) : 0
 
   return () => {
     window.clearTimeout(start)
@@ -416,7 +426,7 @@ export function initVoice(onCommand: (cmd: string) => void, onToggle: (v: boolea
 // speakRaw: speaks even when SR is off (for voice feedback)
 function speakRaw(text: string) {
   synth.cancel()
-  const utt = new SpeechSynthesisUtterance(text)
+  const utt = utter(text)
   utt.rate = 1.0
   synth.speak(utt)
 }

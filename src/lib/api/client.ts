@@ -58,5 +58,5 @@ export async function kvList(prefix: string, newest?: number): Promise<any[]> {
 //
 // Lists only their owner writes are still single rows: employer_jobs:<employerId>,
 // applied_jobs:<applicantId>, notifications_seen:<userId>, pinned_conversations:<userId>,
-// deleted_conversations:<userId>, hidden_messages:<userId>:<convId>,
-// health_assessment:<userId> (kept off the profile, which employers are sent).
+// deleted_conversations:<userId>, hidden_messages:<userId>:<convId>.
+// health_assessment:<userId> is no longer written: the health survey is not saved (see health.ts).

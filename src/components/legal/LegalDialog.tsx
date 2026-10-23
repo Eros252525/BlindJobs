@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from '@/lib/i18n'
 import { ModalDialog } from '@/components/ui/ModalDialog'
 import { LEGAL_DOCS, onOpenLegal, type LegalDoc, type LegalDocId, type LegalSection } from '@/lib/documents/legal'
 
@@ -16,7 +17,7 @@ const sectionText = (s: LegalSection) => [s.heading, ...s.body, ...(s.items ?? [
 // This way Tab walks through the whole document, scrolling it and reading it
 // aloud, so nobody is asked to agree to text they could not reach.
 function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => void }) {
-  const meta = `Version ${doc.version}, effective ${doc.effective}.`
+  const meta = t('Version {v}, effective {date}.', { v: doc.version, date: doc.effective })
   const howTo = `${doc.sections.length} sections. Press Tab to read each one, Escape to close.`
 
   return (
@@ -31,7 +32,7 @@ function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => void }) {
             <p className="mt-3 text-base text-gray-800">{doc.summary}</p>
             <p className="sr-only">{howTo}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label={`Close ${doc.title}`}
+          <button type="button" onClick={onClose} aria-label={t('Close {doc}', { doc: t(doc.title) })}
             className="w-11 h-11 shrink-0 grid place-items-center rounded-md text-gray-700 hover:bg-gray-100 text-xl">
             <span aria-hidden="true">✕</span>
           </button>
@@ -56,7 +57,7 @@ function LegalDialog({ doc, onClose }: { doc: LegalDoc; onClose: () => void }) {
         </div>
 
         <div className="mt-6 pt-5 border-t border-gray-200">
-          <button type="button" onClick={onClose} className="btn-primary px-6">Close</button>
+          <button type="button" onClick={onClose} className="btn-primary px-6">{t('Close')}</button>
         </div>
       </div>
     </ModalDialog>
@@ -75,9 +76,9 @@ function Item({ text }: { text: string }) {
     <>
       <strong className="text-gray-900">{m[1]}</strong>
       <blockquote className="mt-1 border-l-4 border-gray-400 pl-3 text-gray-700">
-        <span className="sr-only">WCAG says: </span>{m[2]}
+        <span className="sr-only">{t('WCAG says:')} </span>{m[2]}
       </blockquote>
-      <span className="block mt-1"><span className="font-semibold">How Blind Jobs meets it:</span> {m[3]}</span>
+      <span className="block mt-1"><span className="font-semibold">{t('How Blind Jobs meets it:')}</span> {m[3]}</span>
     </>
   )
 }

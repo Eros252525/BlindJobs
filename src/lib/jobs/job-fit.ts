@@ -6,7 +6,7 @@
 // What goes in: skills, work setup, location and experience. What never goes in: the type of visual
 // disability, which may not count against an applicant (Magna Carta for Persons
 // with Disability, RA 7277).
-import { jobSkillList, sameArea, skillMatches } from '@/lib/jobs/matching'
+import { isGoodMatch, jobSkillList, matchReason, relatedExperience, sameArea, skillMatch, skillMatches, skillWeight } from '@/lib/jobs/matching'
 import type { ApplicantProfile, Job } from '@/types'
 
 export type FitPartId = 'skills' | 'setup' | 'location' | 'experience'
@@ -45,14 +45,16 @@ export function jobFit(job: Job, p: ApplicantProfile | null | undefined): JobFit
   const profile = p || {}
   const raw: (Omit<FitPart, 'earned' | 'max'> & { share: number })[] = []
 
-  // Skills: the share of the job's listed skills that the applicant has
+  // Skills: the share of the job's listed skills that the applicant has, with
+  // common skills such as Typing counting a quarter as much (see skillWeight)
   const wanted = jobSkillList(job)
   const mine = (profile.skills || []).filter(Boolean)
   if (wanted.length) {
     const hits = wanted.filter(s => skillMatches(s, mine))
     const lacking = wanted.filter(s => !hits.includes(s))
+    const weigh = (list: string[]) => list.reduce((sum, s) => sum + skillWeight(s), 0)
     raw.push({
-      id: 'skills', label: 'Skills', share: hits.length / wanted.length,
+      id: 'skills', label: 'Skills', share: weigh(hits) / weigh(wanted),
       reason: hits.length
         ? `${hits.length} of ${wanted.length} required skills match: ${hits.join(', ')}.`
         : `None of the ${wanted.length} required skills are on the profile yet.`,
@@ -87,14 +89,18 @@ export function jobFit(job: Job, p: ApplicantProfile | null | undefined): JobFit
     })
   }
 
-  // Experience: past jobs listed, against the level the job asks for
+  // Experience: past jobs listed, against the level the job asks for. A past job
+  // related to this one counts in full, any other past job half.
   if (job.experienceLevel && job.experienceLevel in NEEDED_JOBS) {
     const need = NEEDED_JOBS[job.experienceLevel]
-    const have = (profile.experience || []).filter(x => x.title?.trim()).length
+    const listed = (profile.experience || []).filter(x => x.title?.trim()).length
+    const related = relatedExperience(job, profile)
+    const have = related.length + (listed - related.length) / 2
+    const relatedNote = related.length ? ` Related past work: ${related.join(', ')}.` : ''
     raw.push({
       id: 'experience', label: 'Experience', share: need === 0 ? 1 : Math.min(1, have / need),
-      reason: need === 0 ? 'An entry-level job: no past experience is required.'
-        : `A ${job.experienceLevel.toLowerCase()} job; ${have} past job${have === 1 ? ' is' : 's are'} listed on the profile.`,
+      reason: (need === 0 ? 'An entry-level job: no past experience is required.'
+        : `${/^[aeiou]/i.test(job.experienceLevel) ? 'An' : 'A'} ${job.experienceLevel.toLowerCase()} job; ${listed} past job${listed === 1 ? ' is' : 's are'} listed on the profile.`) + relatedNote,
       tip: need > have ? 'Add past work to the profile, if there is more.' : undefined,
     })
   }
@@ -139,19 +145,19 @@ function fitSummary(score: number, parts: FitPart[], eligible: boolean): string 
 export interface JobSuggestion { job: Job; fit: JobFit; because: string }
 
 /**
- * The jobs to suggest to an applicant, best fit first: the ones asking for a
- * skill on their profile. Nothing is suggested until the profile lists a skill.
- * Jobs limited to another visual category are never suggested.
+ * The jobs to suggest to an applicant, best fit first: the ones that match their
+ * skills and past work closely enough (isGoodMatch: two skills, not only common
+ * ones like Typing, or one skill and related work). Nothing is suggested until
+ * the profile lists a skill. Jobs limited to another visual category are never suggested.
  */
 export function suggestJobs(jobs: Job[], p: ApplicantProfile | null | undefined): JobSuggestion[] {
-  const mine = (p?.skills || []).filter(Boolean)
-  if (!p || !mine.length) return []
+  if (!p || !(p.skills || []).some(Boolean)) return []
   const out: JobSuggestion[] = []
   for (const { job, fit } of rankJobs(jobs, p)) {
     if (!fit.eligible) continue
-    const skills = jobSkillList(job).filter(s => skillMatches(s, mine))
-    if (!skills.length) continue
-    out.push({ job, fit, because: `Asks for your skill${skills.length === 1 ? '' : 's'}: ${skills.join(', ')}` })
+    const m = skillMatch(job, p)
+    if (!isGoodMatch(job, m)) continue
+    out.push({ job, fit, because: matchReason(m) })
   }
   return out
 }

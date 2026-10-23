@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { stageColor } from '@/lib/format'
+import { yearsLabel } from '@/lib/resume'
+import { formatMobile } from '@/lib/phone'
 import { fitLabel, jobFit } from '@/lib/jobs/job-fit'
 import { toast } from '@/lib/toast'
 import { KANBAN_COLS } from '@/constants'
@@ -198,14 +200,15 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                 <p className="text-sm text-gray-800 whitespace-pre-line mb-3 border-l-4 border-[#1a4fa0] pl-3">{modal.profile.about}</p>
               )}
               <div className="bg-gray-50 rounded-lg px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-4">
-                <div><span className="font-semibold">Email:</span> <span className="text-gray-700">{modal.profile?.email || 'None. Reach this applicant in Messages or by phone.'}</span></div>
+                <div><span className="font-semibold">Email:</span> <span className="text-gray-700">{/* an applicant who signs in with a username added any email only for password resets */}
+                  {(!modal.profile?.username && modal.profile?.email) || 'Not shared. Reach this applicant in Messages or by phone.'}</span></div>
                 <div><span className="font-semibold">Disability:</span> <span className="text-gray-700">{modal.profile?.disabilityType || '—'}</span></div>
-                <div><span className="font-semibold">Phone:</span> <span className="text-gray-700">{modal.profile?.mobile || '—'}</span></div>
+                <div><span className="font-semibold">Phone:</span> <span className="text-gray-700">{formatMobile(modal.profile?.mobile) || '—'}</span></div>
                 <div><span className="font-semibold">Location:</span> <span className="text-gray-700">{modal.profile?.location || '—'}</span></div>
                 <div className="sm:col-span-2"><span className="font-semibold">Skills:</span> <span className="text-gray-700">{(modal.profile?.skills || []).filter(Boolean).join(', ') || '—'}</span></div>
                 <div className="sm:col-span-2"><span className="font-semibold">Education:</span> <span className="text-gray-700">{[modal.profile?.educationLevel, modal.profile?.school].filter(Boolean).join(', ') || '—'}</span></div>
                 <div className="sm:col-span-2"><span className="font-semibold">Experience:</span> <span className="text-gray-700">
-                  {(modal.profile?.experience || []).filter(x => x.title).map(x => [x.title, x.company, x.period].filter(Boolean).join(', ')).join('; ') || 'None listed'}
+                  {(modal.profile?.experience || []).filter(x => x.title).map(x => [x.title, x.company, yearsLabel(x.period)].filter(Boolean).join(', ')).join('; ') || 'None listed'}
                 </span></div>
                 <div className="sm:col-span-2"><span className="font-semibold">Assistive technology:</span> <span className="text-gray-700">{(modal.profile?.assistiveTech || []).join(', ') || '—'}</span></div>
                 <div><span className="font-semibold">Work setup:</span> <span className="text-gray-700">{(modal.profile?.workSetup || []).join(', ') || '—'}</span></div>

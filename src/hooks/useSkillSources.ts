@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
+import { jobIsOpen } from '@/lib/jobs/job-post'
 import { recommendedSkills, searchableSkills, SKILL_VOCABULARY } from '@/lib/jobs/skills'
 import { SKILL_CHOICES } from '@/lib/resume'
 import type { Job } from '@/types'
@@ -17,6 +18,6 @@ export function useSkillSources() {
     jobs,
     searchable: jobs ? searchableSkills(jobs) : SKILL_VOCABULARY,
     recommended: jobs ? recommendedSkills(jobs) : SKILL_CHOICES,
-    fromJobs: !!jobs?.some(j => (j.status || 'Active') === 'Active' && j.skills?.trim()),
+    fromJobs: !!jobs?.some(j => jobIsOpen(j) && j.skills?.trim()),
   }
 }

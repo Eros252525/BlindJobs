@@ -1,11 +1,13 @@
 // Job posts: listing, posting, pausing and deleting.
+import { jobIsOpen, jobPostProblem, type JobPostFields } from '@/lib/jobs/job-post'
 import type { Job } from '@/types'
 import { kvGet, kvList, kvSet } from './client'
 import { notifyJobMatches } from './notifications'
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────
 
-export const isOpen = (job: any) => (job.status || 'Active') === 'Active'
+// Active, and nothing on the post needs fixing (see job-post.ts)
+export const isOpen = (job: any) => jobIsOpen(job)
 
 export async function getJobs() {
   const [rows, legacy] = await Promise.all([kvList('job:'), kvGet('jobs:list')])
@@ -18,6 +20,8 @@ export async function getJobs() {
 }
 
 export async function postJob(body: Record<string, any>) {
+  const problem = jobPostProblem(body as JobPostFields)
+  if (problem) throw new Error(problem)
   const id = crypto.randomUUID()
   const job = { id, ...body, createdAt: new Date().toISOString(), listed: true }
   await kvSet(`job:${id}`, job)
@@ -26,6 +30,21 @@ export async function postJob(body: Record<string, any>) {
   await kvSet(`employer_jobs:${body.employerId}`, empList)
   await notifyJobMatches(job as Job)
   return job
+}
+
+// What an employer may change on a post. Anything else (id, owner, dates) stays as it was.
+const EDITABLE = ['companyName', 'jobTitle', 'skills', 'location', 'salary', 'vacancies', 'jobType', 'experienceLevel', 'description', 'workCategory', 'disabilityCategories', 'status'] as const
+
+/** Saves an edited post. Refused, like a new post, if anything needs fixing. */
+export async function updateJob(jobId: string, employerId: string, body: Record<string, any>) {
+  const job = await kvGet(`job:${jobId}`)
+  if (!job || job.deleted || job.employerId !== employerId) throw new Error('Job not found')
+  const changes = Object.fromEntries(EDITABLE.filter(k => k in body).map(k => [k, body[k]]))
+  const updated = { ...job, ...changes, updatedAt: new Date().toISOString() }
+  const problem = jobPostProblem(updated as JobPostFields)
+  if (problem) throw new Error(problem)
+  await kvSet(`job:${jobId}`, updated)
+  return updated as Job
 }
 
 export async function getEmployerJobs(employerId: string) {

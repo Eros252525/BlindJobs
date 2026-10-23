@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import { NO_CONSENT } from '@/lib/documents/legal'
+import { t, useLang } from '@/lib/i18n'
 import { useStepFocus } from '@/hooks/useStepFocus'
 import type { User } from '@/types'
 import { AccountStep } from './register/AccountStep'
 import { FinishStep } from './register/FinishStep'
 import { StepFrame } from './register/StepFrame'
 import { EMPTY_WORK_PROFILE, WorkProfileStep, type WorkProfile } from './register/WorkProfileStep'
-import { STEPS, STEP_NAMES, stepNumber, type AccountForm, type Step } from './register/steps'
+import { accountName, EMPTY_ACCOUNT_FORM, STEPS, STEP_NAMES, stepNumber, type AccountForm, type Step } from './register/steps'
 
 /**
  * Applicant registration as one guided flow: account details, work profile,
@@ -15,9 +16,14 @@ import { STEPS, STEP_NAMES, stepNumber, type AccountForm, type Step } from './re
  * This file holds what the applicant has entered so far and moves between the
  * steps; each step is its own file in ./register/.
  */
-export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User) => void; onBack: () => void }) {
+export function RegisterApplicantScreen({ onRegistered, onBack }: {
+  /** The account exists: off to the sign-in page, where the applicant signs in with it. */
+  onRegistered: (username: string) => void
+  onBack: () => void
+}) {
+  useLang()
   const [step, setStep] = useState<Step>('account')
-  const [form, setForm] = useState<AccountForm>({ fullName: '', username: '', password: '' })
+  const [form, setForm] = useState<AccountForm>(EMPTY_ACCOUNT_FORM)
   const [consent, setConsent] = useState(NO_CONSENT)
   const [work, setWork] = useState<WorkProfile>(EMPTY_WORK_PROFILE)
   const [loading, setLoading] = useState(false)
@@ -25,10 +31,23 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
   // Set once the account exists, so a retry after a failed save does not register twice
   const created = useRef<User | null>(null)
 
-  const go = (s: Step) => { setError(''); setStep(s) }
+  // Each step is its own entry in the browser's history (same address), so the
+  // browser's Back goes to the step before instead of out of registration, where the
+  // answers would be lost; Forward comes back. Previous step uses the same history.
+  const go = (s: Step) => { setError(''); setStep(s); window.history.pushState({ regStep: s }, '', window.location.href) }
+  const previous = () => window.history.back()
+  useEffect(() => {
+    window.history.replaceState({ regStep: 'account' }, '', window.location.href)
+    const onPop = (e: PopStateEvent) => {
+      const s = e.state?.regStep as Step | undefined
+      if (s && STEPS.includes(s)) { setError(''); setStep(s) }
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   // The work profile moves focus itself; this covers the other steps.
-  const headingRef = useStepFocus<HTMLHeadingElement>(step, `Step ${stepNumber(step)} of ${STEPS.length}. ${STEP_NAMES[step]}.`)
+  const headingRef = useStepFocus<HTMLHeadingElement>(step, t('Step {n} of {total}. {name}.', { n: stepNumber(step), total: STEPS.length, name: t(STEP_NAMES[step]) }))
 
   // Nothing is saved until the last step, so warn before a reload or a closed tab throws the answers away
   useEffect(() => {
@@ -44,12 +63,8 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
     setError(''); setLoading(true)
     try {
       if (!created.current) {
-        // The profile keeps first and last name apart: the last word is the last name,
-        // and the profile screen lets the applicant correct the split.
-        const words = form.fullName.trim().split(/\s+/)
-        const lastName = words.length > 1 ? words.pop()! : ''
         created.current = await api.register({
-          role: 'applicant', firstName: words.join(' '), lastName,
+          role: 'applicant', firstName: form.firstName.trim(), middleName: form.middleName.trim(), lastName: form.lastName.trim(), mobile: form.mobile,
           username: form.username, password: form.password, consent,
           disabilityType: work.disabilityType,
           skills: work.skills,
@@ -60,10 +75,12 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
         location: work.location.trim(), workSetup: work.workSetup, assistiveTech: work.assistiveTech, accommodations: work.accommodations,
         experience: work.jobTitle.trim() ? [{ title: work.jobTitle.trim(), company: work.company.trim(), period: '' }] : [],
       })
-      onLogin(user)
+      // Not signed in here: the applicant signs in once with what they just chose,
+      // so they know it works before they need it
+      onRegistered(user.email)
     } catch (e: any) {
       setError(created.current
-        ? `Your account was created, but some answers were not saved: ${e.message}. Choose Create my account to try again.`
+        ? t('Your account was created, but some answers were not saved: {reason}. Choose Create my account to try again.', { reason: e.message })
         : e.message)
     } finally { setLoading(false) }
   }
@@ -75,15 +92,15 @@ export function RegisterApplicantScreen({ onLogin, onBack }: { onLogin: (u: User
 
   if (step === 'profile') {
     return (
-      <StepFrame step={step} onPrev={() => go('account')}>
+      <StepFrame step={step} onPrev={previous}>
         <WorkProfileStep value={work} onChange={setWork} onContinue={() => go('finish')} />
       </StepFrame>
     )
   }
 
   return (
-    <StepFrame step="finish" onPrev={() => go('profile')}>
-      <FinishStep headingRef={headingRef} name={form.fullName.trim()} username={form.username.trim().toLowerCase()} work={work}
+    <StepFrame step="finish" onPrev={previous}>
+      <FinishStep headingRef={headingRef} name={accountName(form)} mobile={form.mobile} username={form.username.trim().toLowerCase()} work={work}
         loading={loading} error={error} onCreate={createAccount} />
     </StepFrame>
   )

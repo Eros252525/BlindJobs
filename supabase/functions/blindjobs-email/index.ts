@@ -6,12 +6,18 @@
 //   GMAIL_USER          the Blind Jobs Gmail address that sends the emails
 //   GMAIL_APP_PASSWORD  its 16-letter app password (not the normal password)
 //   CODE_SECRET         any long random text; codes are stored only as HMACs keyed by it
+//   SEMAPHORE_API_KEY   (optional) Semaphore SMS API key, for password-reset codes by text
+//                       message to applicants' Philippine mobile numbers (semaphore.co)
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase itself.
 //
 // Actions (POST JSON with an `action` field):
 //   send-code    { email }        emails a code, before an account is created
 //   verify-code  { email, code }  checks it; on success marks the address as confirmed
 //   login-alert  { email }        emails "your account was just signed in to"
+//   send-reset   { role, login, channel: 'sms' | 'email', contact }
+//                texts or emails a password-reset code, if `contact` is the mobile
+//                number or email saved on the account `login` (username or email)
+//   reset-password { role, login, code, password }  checks the code, sets the new password
 import nodemailer from 'npm:nodemailer@6.9.16'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -154,6 +160,112 @@ function describeDevice(ua: string) {
   return `${browser} on ${system}`
 }
 
+// ── password reset ────────────────────────────────────────────────────────────
+// A forgotten password is reset with a 6-digit code sent to what the account already
+// has: the applicant's Philippine mobile number (most blind applicants have no email),
+// or an email address. The person types the number or address themselves, and the
+// answer is the same whether or not it matched, so the page never reveals whether an
+// account exists or what its number is.
+
+const SMS_KEY = Deno.env.get('SEMAPHORE_API_KEY') || ''
+const MIN_PASSWORD = 8
+
+/** The 10 digits after +63 of a Philippine mobile number, or null (same rules as src/lib/phone.ts). */
+function phMobile(input: unknown): string | null {
+  const raw = String(input || '').trim()
+  if (!raw || /[^\d\s()+.-]/.test(raw)) return null
+  const digits = raw.replace(/\D/g, '')
+  const local = raw.startsWith('+') || digits.startsWith('63')
+    ? (digits.startsWith('63') ? digits.slice(2) : null)
+    : digits.startsWith('0') ? digits.slice(1) : digits
+  return local && /^9\d{9}$/.test(local) ? local : null
+}
+
+// The same hash the app stores passwords with (src/lib/api/auth.ts)
+async function hashPassword(password: string) {
+  const buf = await crypto.subtle.digest('SHA-256', encoder.encode(password))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** The account a reset is asked for, or null. `login` is an applicant's username or an email address. */
+async function findAccount(role: unknown, login: unknown) {
+  const typed = String(login || '').trim().toLowerCase()
+  if (!typed || (role !== 'applicant' && role !== 'employer')) return null
+  const ref = (!typed.includes('@') && await get(`user_by_username:${typed}`)) || await get(`user_by_email:${typed}`)
+  const user = ref && await get(`user:${ref.userId}`)
+  if (!user || user.role !== role) return null
+  const profile = role === 'applicant' ? await get(`applicant_profile:${user.id}`) : null
+  return { user, profile }
+}
+
+async function sendSms(mobile: string, message: string) {
+  const res = await fetch('https://api.semaphore.co/api/v4/messages', {
+    method: 'POST',
+    body: new URLSearchParams({ apikey: SMS_KEY, number: `0${mobile}`, message }),
+  })
+  if (!res.ok) throw new Error(`Semaphore answered ${res.status}: ${await res.text()}`)
+}
+
+async function sendReset(body: Record<string, unknown>) {
+  const channel = body.channel === 'sms' ? 'sms' : 'email'
+  // Said before any lookup, so it tells nothing about the account
+  if (channel === 'sms' && !SMS_KEY) throw new Refusal('Codes by text message are not set up yet. Choose email, or ask Blind Jobs for help.', 503)
+  const account = await findAccount(body.role, body.login)
+  if (!account) return
+  const { user, profile } = account
+  let to = ''
+  if (channel === 'sms') {
+    const typed = phMobile(body.contact)
+    if (typed && typed === phMobile(profile?.mobile)) to = typed
+  } else {
+    const typed = String(body.contact || '').trim().toLowerCase()
+    const known = [user.email, profile?.email].filter(Boolean).map((e: string) => e.trim().toLowerCase())
+    if (typed && known.includes(typed)) to = typed
+  }
+  if (!to) return
+
+  const key = `reset_code:${user.id}`
+  const last = await get(key)
+  if (last && Date.now() - last.sentAt < RESEND_SECONDS * 1000) return // one code a minute, silently
+  const code = newCode()
+  await put(key, { mac: await seal(user.id, code), sentAt: Date.now(), expiresAt: Date.now() + CODE_MINUTES * 60_000, tries: 0 })
+  const spaced = code.split('').join(' ')
+  if (channel === 'sms') {
+    await sendSms(to, `Blind Jobs: your code to reset your password is ${spaced}. It works for ${CODE_MINUTES} minutes. Do not share it with anyone.`)
+  } else {
+    await mailer.sendMail({
+      from: `Blind Jobs <${FROM}>`, to,
+      subject: `Your Blind Jobs password reset code is ${code}`,
+      text: `Your code to reset your Blind Jobs password is ${spaced}.\n\nIt works for ${CODE_MINUTES} minutes. Do not share it with anyone.\n\nIf you did not ask for this, you can ignore this email: your password has not changed.`,
+      html: page([
+        'Your code to reset your Blind Jobs password is:',
+        `<strong style="font-size:32px;letter-spacing:8px">${code}</strong>`,
+        `It works for ${CODE_MINUTES} minutes. Do not share it with anyone.`,
+        'If you did not ask for this, you can ignore this email: your password has not changed.',
+      ]),
+    })
+  }
+}
+
+async function resetPassword(body: Record<string, unknown>) {
+  const password = String(body.password || '')
+  if (password.length < MIN_PASSWORD) throw new Refusal(`The new password needs at least ${MIN_PASSWORD} characters.`)
+  const wrong = 'That code is not right, or it has expired. Check it, or ask for a new code.'
+  const account = await findAccount(body.role, body.login)
+  if (!account) throw new Refusal(wrong)
+  const key = `reset_code:${account.user.id}`
+  const entry = await get(key)
+  if (!entry || Date.now() > entry.expiresAt) throw new Refusal(wrong)
+  if (entry.tries >= MAX_TRIES) throw new Refusal('Too many wrong tries. Ask for a new code.')
+  const typed = String(body.code || '').replace(/\D/g, '')
+  if (typed.length !== 6 || (await seal(account.user.id, typed)) !== entry.mac) {
+    await put(key, { ...entry, tries: entry.tries + 1 })
+    throw new Refusal(wrong)
+  }
+  await drop(key)
+  await put(`user:${account.user.id}`, { ...account.user, password: await hashPassword(password), passwordChangedAt: new Date().toISOString() })
+}
+
 // ── entry ─────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -165,6 +277,8 @@ Deno.serve(async (req) => {
       case 'send-code': await sendCode(gmail(body.email)); break
       case 'verify-code': await verifyCode(gmail(body.email), body.code); break
       case 'login-alert': await loginAlert(body.email, req); break
+      case 'send-reset': await sendReset(body); break
+      case 'reset-password': await resetPassword(body); break
       default: throw new Refusal('Unknown action.')
     }
     return reply({ ok: true })

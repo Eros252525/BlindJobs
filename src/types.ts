@@ -1,7 +1,7 @@
 export type Role = 'applicant' | 'employer'
 
 export type Screen =
-  | 'intro' | 'login' | 'register-applicant' | 'register-employer'
+  | 'intro' | 'login' | 'register-applicant' | 'register-employer' | 'forgot-password'
   | 'dashboard' | 'profile' | 'assessments' | 'jobs' | 'messages'
   | 'emp-dashboard' | 'emp-post-job' | 'emp-applicants' | 'emp-messages'
 
@@ -34,8 +34,8 @@ export interface ApplicantProfile {
   updatedAt?: string
 }
 
-// The RAND-36 health survey, stored as health_assessment:<userId> and never on the
-// profile, because employers are sent the profile of anyone who applies to them.
+// One go at the RAND-36 health survey. Kept only in the browser while the applicant
+// looks at it, never saved (see lib/api/health.ts).
 export interface HealthAssessment {
   instrument: 'RAND-36 1.0'
   /** Item number → position of the chosen answer, from 1; skipped items are absent. */

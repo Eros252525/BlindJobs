@@ -1,4 +1,6 @@
 // Applying for a job, and following each application through its stages.
+import { incompleteProfileMessage, requiredProfileFields } from '@/lib/resume'
+import { missingFields } from '@/lib/validation'
 import type { Job, MyApplication } from '@/types'
 import { kvGet, kvList, kvSet } from './client'
 import { isOpen } from './jobs'
@@ -26,10 +28,11 @@ export async function applyToJob(jobId: string, applicantId: string) {
   if (!job || job.deleted) throw new Error('Job not found')
   if (!isOpen(job)) throw new Error('This job is no longer accepting applications')
   if (await getApplication(jobId, applicantId)) throw new Error('Already applied')
-  // Checked here as well as on the Jobs screen, so no way of applying gets round it
-  if (!(await kvGet(`health_assessment:${applicantId}`))) {
-    throw new Error('Before you apply, please answer the RAND-36 health survey on the Assessments page.')
-  }
+  // The employer is sent the profile, so its required fields must be filled in.
+  // Checked here as well as on the Jobs screen, so no way of applying gets round it.
+  // The health survey is never checked: it is optional and has nothing to do with applying.
+  const missing = missingFields(requiredProfileFields((await kvGet(`applicant_profile:${applicantId}`)) || {}))
+  if (missing.length) throw new Error(incompleteProfileMessage(missing))
   const application = { applicantId, jobId, stage: 'New', appliedAt: new Date().toISOString() }
   await kvSet(`application:${jobId}:${applicantId}`, application)
   // Track applied jobs per applicant

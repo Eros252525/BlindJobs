@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { ACCOMMODATIONS, ASSISTIVE_TECH, WORK_SETUPS } from '@/lib/resume'
+import { t, useLang } from '@/lib/i18n'
+import { ACCOMMODATIONS, ASSISTIVE_TECH, DISABILITY_TYPES, WORK_SETUPS } from '@/lib/resume'
 import { focusFirst, missingFields, missingMessage } from '@/lib/validation'
 import { useStepFocus } from '@/hooks/useStepFocus'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
@@ -33,9 +34,10 @@ type ListKey = 'workSetup' | 'assistiveTech' | 'accommodations'
 export function WorkProfileStep({ value, onChange, onContinue }: {
   value: WorkProfile; onChange: (w: WorkProfile) => void; onContinue: () => void
 }) {
+  useLang()
   const [error, setError] = useState('')
   const [invalid, setInvalid] = useState<Set<string>>(new Set())
-  const headingRef = useStepFocus<HTMLHeadingElement>('work-profile', 'Your skills and work preferences.')
+  const headingRef = useStepFocus<HTMLHeadingElement>('work-profile', t('Your skills and work preferences.'))
 
   const { jobs } = useSkillSources()
   const set = <K extends keyof WorkProfile>(k: K, v: WorkProfile[K]) => onChange({ ...value, [k]: v })
@@ -47,8 +49,8 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const missing = missingFields([
-      { id: 'wp-disability', label: 'Disability type', value: value.disabilityType },
-      { id: 'wp-skills-first', label: 'Skills (at least one)', value: value.skills.join('') },
+      { id: 'wp-disability', label: t('Disability type'), value: value.disabilityType },
+      { id: 'wp-skills-first', label: t('Skills (at least one)'), value: value.skills.join('') },
     ])
     setInvalid(new Set(missing.map(f => f.id)))
     if (missing.length) { setError(missingMessage(missing)); focusFirst(missing); return }
@@ -61,20 +63,21 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
       {/* the form on the left; on wide screens a live summary of the answers fills the right */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
       <form onSubmit={submit} noValidate className="lg:col-span-2 min-w-0">
-        <h1 ref={headingRef} tabIndex={-1} className={STEP_HEADING}>Your skills and work preferences</h1>
+        <h1 ref={headingRef} tabIndex={-1} className={STEP_HEADING}>{t('Your skills and work preferences')}</h1>
         <p className="mt-1 text-sm text-gray-700">
-          We use these to match you with jobs. You can change all of it on your profile later.
+          {t('We use these to match you with jobs. You can change all of it on your profile later.')}
         </p>
 
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-          <FormField id="wp-disability" label="Disability type" required>
+          <FormField id="wp-disability" label={t('Disability type')} required>
             <select id="wp-disability" className="input" required value={value.disabilityType} onChange={(e) => set('disabilityType', e.target.value)}
               aria-invalid={invalid.has('wp-disability')} aria-describedby={invalid.has('wp-disability') ? ERROR_ID : undefined}>
-              <option value="">Select disability type</option><option>Totally Blind</option><option>Legally Blind</option><option>Partially Blind</option>
+              <option value="">{t('Select disability type')}</option>
+              {DISABILITY_TYPES.map(d => <option key={d} value={d}>{t(d)}</option>)}
             </select>
           </FormField>
-          <FormField id="wp-location" label="City or province">
-            <input id="wp-location" className="input" type="text" autoComplete="address-level2" placeholder="e.g., Quezon City" value={value.location} onChange={(e) => set('location', e.target.value)} />
+          <FormField id="wp-location" label={t('City or province')}>
+            <input id="wp-location" className="input" type="text" autoComplete="address-level2" placeholder={t('e.g., Quezon City')} value={value.location} onChange={(e) => set('location', e.target.value)} />
           </FormField>
         </div>
 
@@ -84,28 +87,28 @@ export function WorkProfileStep({ value, onChange, onContinue }: {
         </div>
 
         <fieldset className="mt-4">
-          <legend className="field-label">Your most recent job <span className="font-normal text-gray-600">(optional)</span></legend>
+          <legend className="field-label">{t('Your most recent job')} <span className="font-normal text-gray-600">({t('optional')})</span></legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
             <div>
-              <label htmlFor="wp-job" className="text-sm text-gray-700 block mb-1">Job title</label>
-              <input id="wp-job" className="input" type="text" autoComplete="organization-title" placeholder="e.g., Massage therapist" value={value.jobTitle} onChange={(e) => set('jobTitle', e.target.value)} />
+              <label htmlFor="wp-job" className="text-sm text-gray-700 block mb-1">{t('Job title')}</label>
+              <input id="wp-job" className="input" type="text" autoComplete="organization-title" placeholder={t('e.g., Customer service representative')} value={value.jobTitle} onChange={(e) => set('jobTitle', e.target.value)} />
             </div>
             <div>
-              <label htmlFor="wp-company" className="text-sm text-gray-700 block mb-1">Company or employer</label>
+              <label htmlFor="wp-company" className="text-sm text-gray-700 block mb-1">{t('Company or employer')}</label>
               <input id="wp-company" className="input" type="text" autoComplete="organization" value={value.company} onChange={(e) => set('company', e.target.value)} />
             </div>
           </div>
         </fieldset>
 
         <div className="mt-6 space-y-5">
-          <ChipGroup id="wp-setup" label="Preferred work setup" options={WORK_SETUPS} selected={value.workSetup} onToggle={(v) => toggle('workSetup', v)} />
-          <ChipGroup id="wp-at" label="Assistive technology I use" options={ASSISTIVE_TECH} selected={value.assistiveTech} onToggle={(v) => toggle('assistiveTech', v)} />
-          <ChipGroup id="wp-acc" label="What I would ask an employer to arrange" options={ACCOMMODATIONS} selected={value.accommodations} onToggle={(v) => toggle('accommodations', v)} />
+          <ChipGroup id="wp-setup" label={t('Preferred work setup')} options={WORK_SETUPS} selected={value.workSetup} onToggle={(v) => toggle('workSetup', v)} />
+          <ChipGroup id="wp-at" label={t('Assistive technology I use')} options={ASSISTIVE_TECH} selected={value.assistiveTech} onToggle={(v) => toggle('assistiveTech', v)} />
+          <ChipGroup id="wp-acc" label={t('What I would ask an employer to arrange')} options={ACCOMMODATIONS} selected={value.accommodations} onToggle={(v) => toggle('accommodations', v)} />
         </div>
 
         <ErrorMsg id={ERROR_ID} msg={error} />
         <div className="mt-6">
-          <button type="submit" className="btn-primary min-h-11 px-6">Continue</button>
+          <button type="submit" className="btn-primary min-h-11 px-6">{t('Continue')}</button>
         </div>
       </form>
       <ProfilePreview value={value} jobs={jobs} />
@@ -123,13 +126,13 @@ function ChipGroup({ id, label, options, selected, onToggle }: {
 }) {
   return (
     <div>
-      <p id={id} className="field-label">{label} <span className="font-normal text-gray-600">(optional, choose any)</span></p>
+      <p id={id} className="field-label">{label} <span className="font-normal text-gray-600">({t('optional, choose any')})</span></p>
       <div role="group" aria-labelledby={id} className="flex flex-wrap gap-2">
         {options.map(o => {
           const on = selected.includes(o)
           return (
             <button type="button" key={o} aria-pressed={on} onClick={() => onToggle(o)} className={`${CHIP} ${on ? CHIP_ON : CHIP_OFF}`}>
-              {on ? '✓ ' : ''}{o}
+              {on ? '✓ ' : ''}{t(o)}
             </button>
           )
         })}

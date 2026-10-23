@@ -5,6 +5,7 @@
 import type { Job } from '@/types'
 import { SKILL_CHOICES } from '@/lib/resume'
 import { jobSkillList } from '@/lib/jobs/matching'
+import { jobIsOpen } from '@/lib/jobs/job-post'
 
 export const SKILL_VOCABULARY: string[] = [
   // contact centre and customer service
@@ -39,6 +40,11 @@ export function searchableSkills(jobs: Job[]): string[] {
   return [...seen.values()]
 }
 
+// Never put forward as a recommendation, even when job posts ask for them: they
+// echo the stereotype that blind people massage or make music for a living.
+// They stay in the vocabulary, so anyone can still search for them and add them.
+const NOT_RECOMMENDED = /massage|hilot|shiatsu|reflexology|music|piano|singing|guitar|instrument/i
+
 /**
  * Skills worth adding, most asked-for first: the ones that appear most often in
  * open job posts. Changes as employers post; falls back to common skills while
@@ -47,8 +53,9 @@ export function searchableSkills(jobs: Job[]): string[] {
 export function recommendedSkills(jobs: Job[], count = 10): string[] {
   const tally = new Map<string, { name: string; n: number }>()
   for (const job of jobs) {
-    if ((job.status || 'Active') !== 'Active') continue
+    if (!jobIsOpen(job)) continue
     for (const s of new Set(jobSkillList(job).map(x => x.trim()))) {
+      if (NOT_RECOMMENDED.test(s)) continue
       const key = s.toLowerCase()
       const t = tally.get(key) ?? { name: s, n: 0 }
       t.n++

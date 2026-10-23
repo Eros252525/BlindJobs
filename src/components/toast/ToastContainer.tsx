@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from '@/lib/i18n'
 import * as sr from '@/lib/a11y/screen-reader'
 import { setToastListener, type Toast } from '@/lib/toast'
 
@@ -18,10 +19,10 @@ const TOAST_STYLE: Record<Toast['type'], string> = {
 export function ToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([])
   useEffect(() => {
-    setToastListener((t) => {
+    setToastListener((item) => {
       const id = ++nextId
-      setToasts(prev => [...prev, { ...t, id }].slice(-MAX_TOASTS))
-      sr.announce(t.msg) // the built-in reader doesn't listen to live regions
+      setToasts(prev => [...prev, { ...item, id }].slice(-MAX_TOASTS))
+      sr.announce(item.msg) // the built-in reader doesn't listen to live regions
     })
     return () => setToastListener(null)
   }, [])
@@ -46,7 +47,7 @@ export function ToastContainer() {
   }, [toasts])
 
   const dismiss = (id: number) => setToasts(prev => prev.filter(x => x.id !== id))
-  const latest = (urgent: boolean) => [...toasts].reverse().find(t => (t.type === 'error') === urgent)
+  const latest = (urgent: boolean) => [...toasts].reverse().find(item => (item.type === 'error') === urgent)
   const polite = latest(false), assertive = latest(true)
 
   return (
@@ -54,11 +55,11 @@ export function ToastContainer() {
       <div className="sr-only" role="status" aria-live="polite">{polite && <span key={polite.id}>{polite.msg}</span>}</div>
       <div className="sr-only" role="alert" aria-live="assertive">{assertive && <span key={assertive.id}>{assertive.msg}</span>}</div>
       {toasts.length > 0 && (
-        <section ref={stackRef} aria-label="Notifications" className={`toast-stack ${ducked ? 'is-ducked' : ''}`}>
-          {toasts.map(t => (
-            <div key={t.id} className={`toast ${TOAST_STYLE[t.type]}`}>
-              <p className="flex-1">{t.msg}</p>
-              <button type="button" className="toast-close" onClick={() => dismiss(t.id)} aria-label={`Dismiss: ${t.msg}`}>
+        <section ref={stackRef} aria-label={t('Notifications')} className={`toast-stack ${ducked ? 'is-ducked' : ''}`}>
+          {toasts.map(item => (
+            <div key={item.id} className={`toast ${TOAST_STYLE[item.type]}`}>
+              <p className="flex-1">{item.msg}</p>
+              <button type="button" className="toast-close" onClick={() => dismiss(item.id)} aria-label={t('Dismiss: {msg}', { msg: item.msg })}>
                 <span aria-hidden="true">✕</span>
               </button>
             </div>

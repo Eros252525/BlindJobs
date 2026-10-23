@@ -27,8 +27,8 @@ export interface LegalDoc { id: LegalDocId; title: string; version: string; effe
 const PRIVACY: LegalDoc = {
   id: 'privacy',
   title: 'Privacy Notice',
-  version: '1.7',
-  effective: 'October 20, 2026',
+  version: '1.9',
+  effective: 'October 24, 2026',
   summary: 'This notice explains what personal data Blind Jobs collects, why, who can see it, and your rights under the Data Privacy Act of 2012 (Republic Act No. 10173).',
   sections: [
     {
@@ -43,7 +43,6 @@ const PRIVACY: LegalDoc = {
       body: ['We collect only what you type into Blind Jobs.'],
       items: [
         'Applicants: your name, the username you sign in with (no email is needed), mobile number, gender if you give it, type of visual disability, skills, city or province, education, work experience, assistive technology, preferred work setup, the workplace accommodations you would ask for, languages, your "About me" text, and a profile photo if you add one (employers see it when you apply).',
-        'Applicants who answer the RAND-36 health survey, which is asked for before applying to a job, and only if they tick its consent box: their answers, the eight scores worked out from them, and the dates. Only the applicant sees these; employers never do, and they are not part of the job-fit score. Withdrawing consent on the Assessments page deletes them; applying for another job then needs the survey answered again.',
         'Employers: your company name, your Gmail address, and the jobs you post.',
         'Everyone: your password, the messages you send, the jobs you apply to, and the stage of each application.',
         'Employers: when you register, a 6-digit code is emailed to your Gmail address to confirm it is yours; only a scrambled form of the code is stored, and it is deleted once used or after 10 minutes. Each time an account that has an email address is signed in to, we email that address the time and the kind of device and browser used, so you can tell if someone else signed in.',
@@ -54,7 +53,20 @@ const PRIVACY: LegalDoc = {
       body: [
         'Your type of visual disability is information about your health. The Data Privacy Act treats health and education details as sensitive personal information, which we may process only with your consent.',
         'We ask for that consent when you register.',
-        'Answers to the health survey are health information too. They are saved only if you tick the consent box on the survey.',
+        'Answers to the health survey are health information too, which is why we do not collect them (see "The health survey").',
+      ],
+    },
+    {
+      heading: 'The health survey',
+      body: [
+        'On the Assessments page, applicants may answer the RAND 36-Item Health Survey, which asks how their health affects daily life. It is optional.',
+      ],
+      items: [
+        'You do not need it to apply for any job. Answering it or skipping it does not affect your applications, the jobs suggested to you, or how jobs are ranked for you.',
+        'It has its own agreement box, separate from the consent you gave at registration.',
+        'Your answers are scored on your own device and shown only to you. They are not sent to Blind Jobs and not saved, so no employer and nobody on our team can see them.',
+        'Your results stay only in your browser tab, until you sign out or close the tab. You can download a copy for yourself; that copy is yours to keep or delete.',
+        'Versions of Blind Jobs before October 23, 2026 saved survey answers on our server. We are deleting all of those copies. If one is still there when you next open the Assessments page, it is shown to you one last time and deleted at once.',
       ],
     },
     {
@@ -85,7 +97,7 @@ const PRIVACY: LegalDoc = {
       heading: 'Who can see your data',
       body: [],
       items: [
-        'An employer sees your full profile, including your disability type, contact details, the accommodations you would ask for, and your job-fit score for that job, only after you apply to one of that employer\'s jobs.',
+        'An employer sees your full profile, including your disability type, contact details, the accommodations you would ask for, and your job-fit score for that job, only after you apply to one of that employer\'s jobs. Health survey answers are never sent to us, so no employer can see them.',
         'Other applicants cannot see your profile.',
         'Job posts and company names are shown to all applicants.',
         'Your data is stored with Supabase, a cloud database service. Its servers may be outside the Philippines.',

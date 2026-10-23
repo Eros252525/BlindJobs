@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { t, useLang } from '@/lib/i18n'
 import { AuthShell } from '@/components/auth/AuthShell'
 import { KeyBadge } from '@/components/ui/KeyBadge'
 import * as sr from '@/lib/a11y/screen-reader'
@@ -46,7 +47,7 @@ function GuideList({ id, title, items }: { id: string; title: string; items: Gui
                 <KeyBadge key={k}>{s.icon && <span aria-hidden="true" className="mr-1.5">{s.icon}</span>}{k}</KeyBadge>
               ))}
             </dt>
-            <dd className="text-gray-800">{s.label}</dd>
+            <dd className="text-gray-800">{t(s.label)}</dd>
           </div>
         ))}
       </dl>
@@ -55,26 +56,27 @@ function GuideList({ id, title, items }: { id: string; title: string; items: Gui
 }
 
 export function IntroScreen({ onContinue }: { onContinue: () => void }) {
+  const lang = useLang()
   useEffect(() => {
-    sr.setScreenScript(TUTORIAL)
+    sr.setScreenScript(TUTORIAL.map(line => t(line)))
     return () => sr.setScreenScript(null)
-  }, [])
+  }, [lang])
 
   return (
     <AuthShell width="max-w-6xl" braille>
-      <p className="auth-eyebrow">Navigation guide</p>
-      <h1 className="mt-1 text-3xl font-bold text-gray-900">Welcome to Blind Jobs</h1>
-      <p className="mt-2 text-gray-700">Use the keyboard, a mouse or touch — everything works with each. The screen reader reads focused items aloud.</p>
+      <p className="auth-eyebrow">{t('Navigation guide')}</p>
+      <h1 className="mt-1 text-3xl font-bold text-gray-900">{t('Welcome to Blind Jobs')}</h1>
+      <p className="mt-2 text-gray-700">{t('Use the keyboard, a mouse or touch — everything works with each. The screen reader reads focused items aloud.')}</p>
 
       {/* Two columns on wide screens so the whole guide fits without scrolling;
           Continue sits centred under both. DOM order = reading/Tab order. */}
       <div className="guide-grid">
-        <GuideList id="guide-keyboard" title="Keyboard" items={KEYBOARD} />
-        <GuideList id="guide-mouse" title="Mouse or touch" items={MOUSE} />
+        <GuideList id="guide-keyboard" title={t('Keyboard')} items={KEYBOARD} />
+        <GuideList id="guide-mouse" title={t('Mouse or touch')} items={MOUSE} />
       </div>
       <div className="guide-continue">
-        <button type="button" className="btn-primary w-full" onClick={onContinue} autoFocus>Continue to sign in</button>
-        <p className="mt-3 text-center text-base text-gray-600">Continue is already focused — press <kbd className="font-mono font-semibold">Enter</kbd> or click it</p>
+        <button type="button" className="btn-primary w-full" onClick={onContinue} autoFocus>{t('Continue to sign in')}</button>
+        <p className="mt-3 text-center text-base text-gray-600">{t('Continue is already focused — press')} <kbd className="font-mono font-semibold">{t('Enter')}</kbd> {t('or click it')}</p>
       </div>
     </AuthShell>
   )

@@ -23,7 +23,7 @@ blindss/
 │   └── manifest.webmanifest
 ├── src/
 │   ├── main.tsx                Entry point; also switches optional themes on
-│   ├── App.tsx                 Which screen shows, who is signed in, navigation
+│   ├── App.tsx                 Which screen shows, who is signed in, navigation, the address bar
 │   ├── types.ts                Shared data shapes (User, Job, ApplicantProfile, …)
 │   ├── constants.ts            Screen lists, page titles, kanban columns
 │   │
@@ -69,17 +69,19 @@ blindss/
 │   │   │   ├── messages.ts           Inbox, conversations, pinning and deleting
 │   │   │   └── index.ts              The `api` object the screens use
 │   │   ├── jobs/
-│   │   │   ├── matching.ts           When a job matches an applicant (skills, location, visual category)
+│   │   │   ├── matching.ts           When a job matches an applicant (skills, past work, location, visual category)
+│   │   │   ├── job-post.ts           What a job post needs before it is published (description, location vs work mode)
 │   │   │   ├── job-fit.ts            The 0–100 job-fit score, its reasons, suggestions and ranking
 │   │   │   └── skills.ts             Skills to search while typing, and recommended skills from job posts
 │   │   ├── documents/
 │   │   │   ├── legal.ts              Privacy Notice and Terms text, their versions, and consent
 │   │   │   └── accessibility-statement.ts  The Accessibility page: WCAG 2.2 criteria, W3C's words, how we meet each
 │   │   ├── session.ts          Signed-in user and open screen, kept for the tab so a reload returns there
+│   │   ├── routes.ts           Each screen's address (/login, /jobs, /profile, …) and who may open it
 │   │   ├── resume.ts           Resume choices (education levels, assistive tech, …)
 │   │   ├── photo.ts            Shrinks a chosen profile photo to a small square JPEG
-│   │   ├── validation.ts       Required-field checks for forms
-│   │   ├── format.ts           Names, dates, stage colours
+│   │   ├── validation.ts       Required-field checks for forms, the 50-character name limit
+│   │   ├── format.ts           Names, dates (one style: "September 18, 2026"), salaries ("₱17,000–21,000"), stage colours
 │   │   └── toast.ts            Show a toast from anywhere
 │   │
 │   ├── hooks/                  React hooks (screen-change and step-change announcements, closing menus, reload on a notification)
@@ -124,28 +126,51 @@ blindss/
 Applicant registration is one guided flow of three steps. The account is created at the
 last one, so nothing is stored about someone who stops part-way.
 
-1. **Account and consent.** Full name, username (no email), password; Privacy Notice and
-   Terms, versions recorded on the account. The username is checked for being free here.
+1. **Account and consent.** First, middle and last name (up to 50 characters each),
+   Philippine mobile number, username (no email), password (at least 8 characters);
+   Privacy Notice and Terms, versions recorded on the account. The username is checked
+   for being free here. The mobile number is asked now because applying needs it and a
+   forgotten password is reset with a code texted to it.
 2. **Skills and work preferences.** Disability type, skills, last job, location, work setup,
    assistive technology, accommodations.
-3. **Create the account.** A summary, then everything is saved and the applicant is signed in.
+3. **Create the account.** A summary, then everything is saved and the applicant is taken to
+   Sign in, with their username filled in, to sign in with the password they chose.
 
 After that:
 
 - **Job fit.** Skills 50, work setup 20, location 15, experience 15. Parts a job does not use
-  are dropped and the rest scaled to 100. Jobs are listed best fit first. Applicants do not
-  see the score (only the order, and a note when a job is limited to other visual
-  categories); employers see it with its reasons when reviewing an applicant.
-- **Job suggestions come from the skills on the profile.** Jobs asking for one of the
-  applicant's skills are suggested best fit first (`suggestJobs` in `src/lib/jobs/job-fit.ts`),
-  on the Jobs page and the dashboard. With no skills on the profile, nothing is suggested.
+  are dropped and the rest scaled to 100. Common skills (Typing, Communication, …; the list
+  is `COMMON_SKILLS` in `src/lib/jobs/matching.ts`) count a quarter as much as other skills.
+  A past job related to this one counts in full towards experience, any other past job half.
+  Jobs are listed best fit first. Applicants do not see the score (only the order, and an
+  "Open to …" note naming the visual categories when a job is limited to others); employers
+  see it with its reasons when reviewing an applicant.
+- **Job suggestions come from the skills and past work on the profile.** A job is suggested
+  (and a new one announced in the bell) when two of its skills match, at least one of them
+  not a common skill, or one such skill and related past work (`isGoodMatch` in
+  `src/lib/jobs/matching.ts`). Best fit first, on the Jobs page and the dashboard. With no
+  skills on the profile, nothing is suggested.
+- **Recommended skills** come from what job posts ask for most, but massage and music skills
+  are never recommended (a stereotype about blind workers). Anyone can still search for and
+  add them.
+- **Applying needs the required profile fields** (first and last name, mobile number,
+  disability type, a skill), because the employer is sent the profile. The dashboard names
+  any that are missing, with a button straight to each one.
+- **Job posts must be complete and consistent** (`src/lib/jobs/job-post.ts`): a description,
+  and a location that agrees with the work mode (a city for On-site or Hybrid). Posting and
+  editing are both refused otherwise. Older posts that break these rules are hidden from
+  applicants ("Being updated") and marked "Fix" on the employer dashboard. A live job is
+  paused while the employer edits it; saving or cancelling puts its status back.
 - **Employer review.** The same score and reasons, and the accommodations the applicant asked
   for, with a message to start that conversation.
-- **Assessments page: the health survey (RAND-36).** Must be answered before applying to
-  any job; the Jobs screen and `applyToJob` both check for it. Saved only with its own
-  consent, as `health_assessment:<userId>`, never on the profile (employers are sent the
-  profile). Only the applicant sees the results; it feeds nothing in matching. Item and
-  answer wording is RAND's and must not be reworded (`src/lib/assessment/rand36.ts`).
+- **Assessments page: the health survey (RAND-36).** Optional. It is never needed to apply,
+  and answering or skipping it changes nothing about applications or matching. **It is not
+  saved**: answers are scored in the browser and kept only while the Assessments page is
+  open; the applicant can download a copy as a text file. The database is readable with the
+  public key, so health answers must never be written to it. Copies saved by earlier
+  versions (`health_assessment:<userId>`) are shown once and deleted when the applicant next
+  opens the page (`takeOldHealthAssessment` in `src/lib/api/health.ts`). Item and answer
+  wording is RAND's and must not be reworded (`src/lib/assessment/rand36.ts`).
 
 The skills check (a 10-question test per kind of work) was removed on 2026-10-20. Its code
 is kept in `_removed/skills-check/`, with a README on how it was wired in.
@@ -164,6 +189,9 @@ applicants have no email address. Employers register with a Gmail address
 (`src/lib/gmail.ts` checks Google's username rules); to prove it is real, registration
 emails it a 6-digit code that must be typed back before the account is created. Every
 sign-in to an account that has an email sends it a short alert.
+
+A failed sign-in always says "Email, username or password is incorrect.", so the page
+never tells anyone whether an account exists.
 
 Both are sent by the Edge Function `supabase/functions/blindjobs-email/`, through a
 Gmail account made for Blind Jobs. Until it is deployed, **employers cannot register**:
@@ -189,6 +217,49 @@ and 5 tries; a new one can be asked for once a minute. A sign-in alert goes out 
 once a minute per account. Keys used: `email_code:<email>` (the code as an HMAC, never the
 code itself), `email_verified:<email>` (deleted once the account is made),
 `login_alert:<email>`.
+
+## Forgot password
+
+"Forgot your password?" sits under the Password box on Sign in (`/forgot-password`).
+A 6-digit code is sent to what the account already has, then a new password is chosen:
+
+- **Applicants:** by text message to the Philippine mobile number on their profile, or by
+  email if they added one (the email on the applicant profile is optional, because many
+  blind applicants have none; they still sign in with their username).
+- **Employers:** to their Gmail.
+
+The person types the number or address themselves, and the page answers the same whether
+or not it matched, so it never reveals whether an account exists. The code works for 10
+minutes and 5 tries; one a minute. Key used: `reset_code:<userId>` (an HMAC, never the code).
+
+Both actions are in the same Edge Function (`send-reset`, `reset-password`). Text messages
+go through [Semaphore](https://semaphore.co), a Philippine SMS service (paid per message):
+make an account, copy its API key, then
+
+```
+supabase secrets set SEMAPHORE_API_KEY="<the key>"
+supabase functions deploy blindjobs-email
+```
+
+Without the key, codes by email still work and the page says text messages are not set up.
+
+## Languages
+
+English and Filipino. A new device starts on a screen that asks which, in both languages;
+after that the 🌐 button at the bottom right of every page switches (saved on the device,
+and `<html lang>` follows, so screen readers change voice). The built-in reader speaks with
+a Filipino voice when the device has one.
+
+Code is written in English with each piece of text wrapped in `t('…')` (`src/lib/i18n/`);
+`fil.ts` holds the Filipino for each English string. Text without an entry shows in
+English. To list text that still needs translating:
+`python scripts/i18n-keys.py src src/lib/i18n/fil.ts`.
+
+Not translated, on purpose: the RAND-36 questions (RAND's wording), the Privacy Notice and
+Terms (legal text needs a lawyer's translation), the employer screens, and what people type
+(job posts, messages, skills). Saved values such as disability types are stored in English
+and only shown translated. The Filipino was written by Claude and should be checked by a
+native speaker, ideally one who uses a screen reader, before launch.
 
 ## Keyboard
 

@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties } from 'react'
+import { t } from '@/lib/i18n'
 import { ModalDialog } from '@/components/ui/ModalDialog'
 import {
   DEFAULT_DISPLAY, FONTS, SPACINGS, TEXT_SIZES, THEMES, loadFont,
@@ -19,10 +20,10 @@ export function DisplaySettingsDialog({ settings, onChange, onClose }: {
       <div className="p-6 sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="ds-title" className="text-2xl font-bold text-gray-900">Display settings</h2>
-            <p className="mt-1 text-base text-gray-700">Changes apply straight away and are saved on this device.</p>
+            <h2 id="ds-title" className="text-2xl font-bold text-gray-900">{t('Display settings')}</h2>
+            <p className="mt-1 text-base text-gray-700">{t('Changes apply straight away and are saved on this device.')}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close display settings"
+          <button type="button" onClick={onClose} aria-label={t('Close display settings')}
             className="w-11 h-11 shrink-0 grid place-items-center rounded-md text-gray-700 hover:bg-gray-100 text-xl">
             <span aria-hidden="true">✕</span>
           </button>
@@ -30,8 +31,8 @@ export function DisplaySettingsDialog({ settings, onChange, onClose }: {
 
         {/* Visual sample only: shapes low-vision readers commonly confuse */}
         <div aria-hidden="true" className="mt-5 rounded-lg border border-gray-300 bg-gray-50 px-5 py-4">
-          <p className="text-lg font-semibold text-gray-900">Find work that fits you.</p>
-          <p className="mt-1 text-base text-gray-700">Similar shapes stay apart: 0 O · 1 l I · 5 S · 8 B · rn m</p>
+          <p className="text-lg font-semibold text-gray-900">{t('Find work that fits you.')}</p>
+          <p className="mt-1 text-base text-gray-700">{t('Similar shapes stay apart: 0 O · 1 l I · 5 S · 8 B · rn m')}</p>
         </div>
 
         <OptionGroup legend="Text size" name="ds-size"
@@ -47,7 +48,7 @@ export function DisplaySettingsDialog({ settings, onChange, onClose }: {
         <OptionGroup legend="Colours" name="ds-theme"
           value={settings.theme}
           onChange={v => onChange({ theme: v as DisplaySettings['theme'] })}
-          options={THEMES.map(t => ({ value: t.value, label: t.label, hint: t.hint, swatch: t.swatch }))} />
+          options={THEMES.map(item => ({ value: item.value, label: item.label, hint: item.hint, swatch: item.swatch }))} />
 
         <OptionGroup legend="Spacing" name="ds-spacing"
           value={settings.spacing}
@@ -58,16 +59,16 @@ export function DisplaySettingsDialog({ settings, onChange, onClose }: {
           <input type="checkbox" checked={settings.bold} onChange={e => onChange({ bold: e.target.checked })}
             className="mt-1 w-5 h-5 shrink-0 accent-[#1a4fa0]" />
           <span>
-            <span className="block font-semibold text-gray-900">Heavier text</span>
-            <span className="block text-sm text-gray-700">Makes thin letters thicker and easier to see.</span>
+            <span className="block font-semibold text-gray-900">{t('Heavier text')}</span>
+            <span className="block text-sm text-gray-700">{t('Makes thin letters thicker and easier to see.')}</span>
           </span>
         </label>
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <button type="button" onClick={onClose} className="btn-primary px-6">Done</button>
+          <button type="button" onClick={onClose} className="btn-primary px-6">{t('Done')}</button>
           <button type="button" onClick={() => onChange(DEFAULT_DISPLAY)}
             className="min-h-10 px-5 rounded-md border border-gray-500 bg-white text-gray-800 font-semibold hover:bg-gray-50">
-            Reset to default
+            {t('Reset to default')}
           </button>
         </div>
       </div>

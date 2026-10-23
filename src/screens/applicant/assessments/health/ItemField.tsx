@@ -1,4 +1,5 @@
 import type { Rand36Item } from '@/lib/assessment/rand36'
+import { t } from '@/lib/i18n'
 
 // One question: a group of radio buttons whose <legend> is the question, so a
 // screen reader says the question on entering the group and only the choice after that.
@@ -29,8 +30,8 @@ export function ItemField({ item, stem, describedBy, value, onChange, onClear }:
       </div>
       {value != null && (
         // the button disappears with the answer, so focus goes back to the first choice
-        <button type="button" onClick={() => { onClear(); document.getElementById(`${name}-1`)?.focus() }} aria-label={`Clear my answer to question ${item.n}`}
-          className="mt-2 min-h-6 text-sm text-[#1a4fa0] underline">Clear my answer</button>
+        <button type="button" onClick={() => { onClear(); document.getElementById(`${name}-1`)?.focus() }} aria-label={t('Clear my answer to question {n}', { n: item.n })}
+          className="mt-2 min-h-6 text-sm text-[#1a4fa0] underline">{t('Clear my answer')}</button>
       )}
     </fieldset>
   )

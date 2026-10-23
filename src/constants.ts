@@ -22,6 +22,7 @@ export const SCREEN_LABELS: Partial<Record<Screen, string>> = {
   dashboard: 'Applicant dashboard.',
   profile: 'My profile and resume.',
   assessments: 'Assessments. Your health survey.',
+  'forgot-password': 'Forgot your password.',
   jobs: 'Job listings.',
   messages: 'Messages.',
   'emp-dashboard': 'Employer dashboard.',

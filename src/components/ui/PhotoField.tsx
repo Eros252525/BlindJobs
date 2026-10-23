@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { t } from '@/lib/i18n'
 import { initials } from '@/lib/format'
 import { photoToDataUrl } from '@/lib/photo'
 import { Spinner } from './Spinner'
@@ -30,7 +31,7 @@ export function PhotoField({ id, name, value, onChange, stacked = false }: {
     setBusy(true); setError(''); setStatus('')
     try {
       onChange(await photoToDataUrl(file))
-      setStatus('Photo added. Save your resume to keep it.')
+      setStatus(t('Photo added. Save your resume to keep it.'))
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -41,7 +42,7 @@ export function PhotoField({ id, name, value, onChange, stacked = false }: {
 
   const remove = () => {
     onChange(null); setError('')
-    setStatus('Photo removed. Save your resume to keep this change.')
+    setStatus(t('Photo removed. Save your resume to keep this change.'))
     // the Remove button disappears with the photo, so focus goes to the choose button
     requestAnimationFrame(() => document.getElementById(id)?.focus())
   }
@@ -49,7 +50,7 @@ export function PhotoField({ id, name, value, onChange, stacked = false }: {
   return (
     <div className={stacked ? 'flex flex-col items-center text-center gap-3 w-64 max-w-full' : 'flex flex-wrap items-center gap-5'}>
       {value ? (
-        <img src={value} alt="Your profile photo" className="w-24 h-24 shrink-0 rounded-full object-cover border border-gray-300" />
+        <img src={value} alt={t('Your profile photo')} className="w-24 h-24 shrink-0 rounded-full object-cover border border-gray-300" />
       ) : (
         <span aria-hidden="true" className="w-24 h-24 shrink-0 rounded-full bg-[#1a4fa0] text-white text-3xl font-bold grid place-items-center">
           {initials(name || '?')}
@@ -58,9 +59,9 @@ export function PhotoField({ id, name, value, onChange, stacked = false }: {
       <div className={stacked ? 'w-full' : 'min-w-0 flex-1 basis-60'}>
         {!stacked && (
           <>
-            <p id={`${id}-label`} className="field-label">Profile photo <span className="font-normal text-gray-600">(optional)</span></p>
+            <p id={`${id}-label`} className="field-label">{t('Profile photo')} <span className="font-normal text-gray-600">{t('(optional)')}</span></p>
             <p id={`${id}-help`} className="text-sm text-gray-600">
-              {value ? 'Employers see this photo when you apply.' : 'No photo yet; your initials are shown instead. Employers see the photo when you apply.'} A JPG or PNG; on a phone you can take one with the camera.
+              {value ? t('Employers see this photo when you apply.') : t('No photo yet; your initials are shown instead. Employers see the photo when you apply.')} {t('A JPG or PNG; on a phone you can take one with the camera.')}
             </p>
           </>
         )}
@@ -68,12 +69,12 @@ export function PhotoField({ id, name, value, onChange, stacked = false }: {
           <button type="button" id={id} onClick={() => fileRef.current?.click()} disabled={busy} aria-busy={busy}
             aria-describedby={[stacked ? '' : `${id}-help`, error ? errorId : ''].filter(Boolean).join(' ') || undefined}
             className="min-h-11 px-5 rounded-md border border-[#1a4fa0] text-[#1a4fa0] font-semibold text-sm hover:bg-blue-50 flex items-center gap-2 disabled:opacity-70">
-            {busy ? <Spinner label="Preparing the photo" /> : value ? 'Change photo' : 'Upload photo'}
+            {busy ? <Spinner label={t('Preparing the photo')} /> : value ? 'Change photo' : 'Upload photo'}
           </button>
           {value && !busy && (
             <button type="button" onClick={remove}
               className="min-h-11 px-5 rounded-md border border-gray-500 text-gray-800 font-semibold text-sm hover:bg-gray-100">
-              Remove photo
+              {t('Remove photo')}
             </button>
           )}
         </div>

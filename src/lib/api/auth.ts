@@ -2,6 +2,9 @@
 import { consentRecord } from '@/lib/documents/legal'
 import { gmailAddress, gmailProblem } from '@/lib/gmail'
 import { normalizeUsername, usernameProblem } from '@/lib/username'
+import { nameProblem, passwordProblem } from '@/lib/validation'
+import { mobileProblem, phMobile } from '@/lib/phone'
+import { t } from '@/lib/i18n'
 import { kvDelete, kvGet, kvSet } from './client'
 import { sendLoginAlert } from './email'
 
@@ -61,9 +64,14 @@ async function findUser(input: string): Promise<{ entry: any } | null> {
   return findUserByEmail(input)
 }
 
+// The one answer to every failed sign-in, so it never tells whether an account exists
+const BAD_SIGN_IN = () => t('Email, username or password is incorrect.')
+
 export async function register(body: Record<string, any>) {
   const { role, username, emailUsername, password, firstName, lastName, middleName, suffix, mobile, gender, disabilityType, skills, companyName, consent } = body
-  if (!password) throw new Error('Password is required')
+  if (!password) throw new Error(t('Please fill in: {fields}.', { fields: t('Password') }))
+  const weak = passwordProblem(password)
+  if (weak) throw new Error(weak)
   // No account without consent, whatever the form did (Data Privacy Act, RA 10173)
   if (!consent?.privacy || !consent?.terms) throw new Error('You must agree to the Privacy Notice and the Terms and Conditions')
   const id = crypto.randomUUID()
@@ -78,16 +86,21 @@ export async function register(body: Record<string, any>) {
     if (problem) throw new Error(problem)
     const name = normalizeUsername(username)
     if (!(await usernameAvailable(name))) throw new Error('That username is taken. Choose another one.')
+    if (!firstName?.trim() || !lastName?.trim()) throw new Error('First name and last name are required')
+    const badMobile = mobileProblem(mobile)
+    if (badMobile) throw new Error(badMobile)
+    const tooLong = nameProblem('First name', firstName) || nameProblem('Middle name', middleName) || nameProblem('Last name', lastName)
+    if (tooLong) throw new Error(tooLong)
     // `consent` is the record of what was agreed to: document versions and the time
     await kvSet(`user:${id}`, { id, role, username: name, email: '', password: hashed, createdAt, consent: consentRecord() })
     await kvSet(`user_by_username:${name}`, { userId: id })
     await kvSet(`applicant_profile:${id}`, {
-      userId: id, username: name, firstName: firstName || '', lastName: lastName || '',
-      middleName: middleName || '', suffix: suffix || '', email: '',
-      mobile: mobile || '', gender: gender || '', disabilityType: disabilityType || '',
+      userId: id, username: name, firstName: firstName.trim(), lastName: lastName.trim(),
+      middleName: (middleName || '').trim(), suffix: suffix || '', email: '',
+      mobile: phMobile(mobile) ?? '', gender: gender || '', disabilityType: disabilityType || '',
       skills: skills || [], photoUrl: null,
     })
-    return { id, role, email: name, name: `${firstName} ${lastName}`.trim() || name }
+    return { id, role, email: name, name: `${firstName.trim()} ${lastName.trim()}` }
   }
 
   // Employers: a Gmail address, proved real with an emailed code
@@ -106,16 +119,17 @@ export async function register(body: Record<string, any>) {
 }
 
 export async function login(emailOrUsername: string, password: string, role: string) {
-  const found = await findUser(emailOrUsername)
-  if (!found) throw new Error('No account found with that username or email. Check the spelling or create an account.')
-  const user = await kvGet(`user:${found.entry.userId}`)
-  if (!user) throw new Error('Invalid credentials')
-  // Support both hashed and legacy plaintext passwords
+  if (!emailOrUsername.trim() || !password) throw new Error(t('Please fill in: {fields}.', { fields: `${t('Email or username')}, ${t('Password')}` }))
+  // Hashed before the lookup, so an unknown account takes as long to refuse as a wrong password
   const hashed = await hashPassword(password)
-  if (user.password !== hashed && user.password !== password) throw new Error('Incorrect password')
+  const found = await findUser(emailOrUsername)
+  const user = found ? await kvGet(`user:${found.entry.userId}`) : null
+  // Support both hashed and legacy plaintext passwords
+  if (!user || (user.password !== hashed && user.password !== password)) throw new Error(BAD_SIGN_IN())
   if (user.role !== role) {
-    const label = user.role === 'employer' ? 'Employer' : 'Applicant'
-    throw new Error(`This account is registered as an ${label}. Select "${label}" and try again.`)
+    throw new Error(user.role === 'employer'
+      ? t('This account is registered as an Employer. Select "Employer" and try again.')
+      : t('This account is registered as an Applicant. Select "Applicant" and try again.'))
   }
   // Only accounts with an email get the sign-in alert
   if (user.email) sendLoginAlert(user.email)

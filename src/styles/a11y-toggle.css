@@ -45,12 +45,13 @@
   box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6);
 }
 
+/* dark chip so its white "F2" stays above 4.5:1 on the grey button; 14px floor */
 .a11y-toggle-key {
   padding: 0.15rem 0.45rem;
   border-radius: 0.35rem;
-  background: rgb(255 255 255 / 0.18);
+  background: rgb(17 24 39 / 0.55);
   font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 .a11y-toggle.is-on .a11y-toggle-key {
   background: rgb(5 46 22 / 0.12);
@@ -84,9 +85,16 @@
   font-weight: 800;
 }
 
-/* phones: drop the key hint so both buttons fit on one row */
-@media (max-width: 480px) {
+/* phones: the three buttons shrink to their icons on one row, so they cover as
+   little of the page as possible. The words stay for screen readers (each button
+   also has an aria-label), and the key hint goes. */
+@media (max-width: 640px) {
   .a11y-toggle-key { display: none; }
+  .a11y-label {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  .a11y-display-btn, .a11y-toggle { min-height: 2.75rem; padding: 0.3rem 0.5rem; gap: 0.35rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

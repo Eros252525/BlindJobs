@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { t } from '@/lib/i18n'
 
 // Focus moves into the dialog, Tab/Shift+Tab stay inside it, Escape closes it, and
 // focus returns to the opener on close (or to `returnFocusTo` if the opener was

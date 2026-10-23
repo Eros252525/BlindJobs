@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from '@/lib/i18n'
 import { BRAILLE_DOTS } from '@/lib/a11y/braille'
 
 // Right-hand panel on the sign-in and register screens. It mirrors whatever has
@@ -63,12 +64,12 @@ export function AuthShowcase({ heading }: { heading: string }) {
 
   return (
     <aside className="auth-showcase" aria-labelledby="showcase-title">
-      <p className="auth-showcase-eyebrow">Screen reader ready</p>
-      <h2 id="showcase-title" className="auth-showcase-title">Every field speaks.<br />Every word in braille.</h2>
+      <p className="auth-showcase-eyebrow">{t('Screen reader ready')}</p>
+      <h2 id="showcase-title" className="auth-showcase-title">{t('Every field speaks.')}<br />{t('Every word in braille.')}</h2>
 
       <div className="sr-panel" aria-hidden="true">
         <div className="sr-panel-head">
-          <span className="sr-panel-label">Screen reader</span>
+          <span className="sr-panel-label">{t('Screen reader')}</span>
           <span key={current.id} className="sr-wave"><i /><i /><i /><i /><i /></span>
         </div>
         <ol className="sr-log">
@@ -94,9 +95,9 @@ export function AuthShowcase({ heading }: { heading: string }) {
       </div>
 
       <ul className="auth-showcase-points">
-        <li><span aria-hidden="true">⌨</span>Every action works with Tab and Enter.</li>
-        <li><span aria-hidden="true">🔊</span>Press F2 to hear the focused item with the built-in reader.</li>
-        <li><span aria-hidden="true">⠃</span>Errors name the missing field and take you straight to it.</li>
+        <li><span aria-hidden="true">⌨</span>{t('Every action works with Tab and Enter.')}</li>
+        <li><span aria-hidden="true">🔊</span>{t('Press F2 to hear the focused item with the built-in reader.')}</li>
+        <li><span aria-hidden="true">⠃</span>{t('Errors name the missing field and take you straight to it.')}</li>
       </ul>
     </aside>
   )

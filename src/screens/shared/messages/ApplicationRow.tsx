@@ -1,10 +1,6 @@
-import { stageColor } from '@/lib/format'
+import { fullDateTime, stageColor } from '@/lib/format'
+import { t } from '@/lib/i18n'
 import type { MyApplication } from '@/types'
-
-const shortDate = (iso: string) => {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 /**
  * An application in the inbox, for a job whose employer has no conversation with
@@ -12,7 +8,7 @@ const shortDate = (iso: string) => {
  */
 export function ApplicationRow({ app, onOpenJob }: { app: MyApplication; onOpenJob: (jobId: string) => void }) {
   const { job, stage, appliedAt } = app
-  const spoken = `You applied for ${job.jobTitle} at ${job.companyName}. Status: ${stage}. ${shortDate(appliedAt)}. Open the job.`
+  const spoken = t('You applied for {job} at {company}. Status: {stage}. {when}. Open the job.', { job: job.jobTitle, company: job.companyName, stage: t(stage), when: fullDateTime(appliedAt) })
   return (
     <li className="flex items-center gap-3 px-4 sm:px-6 py-3 bg-white hover:bg-gray-50">
       {/* lines up with the tick box and pin of a conversation row */}
@@ -24,11 +20,11 @@ export function ApplicationRow({ app, onOpenJob }: { app: MyApplication; onOpenJ
         <span className="flex-1 min-w-0">
           <span className="block text-base font-medium text-gray-900 truncate">You applied for {job.jobTitle}</span>
           <span className="block text-sm text-gray-700 truncate">{job.companyName}{job.location ? ` · ${job.location}` : ''}</span>
-          <span className="block text-xs text-[#1a7a3c] font-semibold">View the job you applied for ›</span>
+          <span className="block text-xs text-[#1a7a3c] font-semibold">{t('View the job you applied for ›')}</span>
         </span>
         <span className="shrink-0 flex flex-col items-end gap-1">
-          <span className="text-xs text-gray-600 whitespace-nowrap">{shortDate(appliedAt)}</span>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${stageColor(stage)}`}>{stage}</span>
+          <span className="text-xs text-gray-600 whitespace-nowrap">{fullDateTime(appliedAt)}</span>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${stageColor(stage)}`}>{t(stage)}</span>
         </span>
       </button>
     </li>

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { t } from '@/lib/i18n'
 import { useDismiss } from '@/hooks/useDismiss'
 import { initials } from '@/lib/format'
 import { openDisplaySettings } from '@/lib/a11y/display-settings'
@@ -13,14 +14,14 @@ export function UserMenu({ user, onNavigate, items }: {
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
-  const roleLabel = user.role === 'employer' ? 'Employer' : 'Applicant'
+  const roleLabel = user.role === 'employer' ? t('Employer') : t('Applicant')
   const go = (s: Screen) => { setOpen(false); onNavigate(s) }
 
   return (
     <div ref={ref} className="relative">
       <button data-popover-trigger onClick={() => setOpen(o => !o)}
-        aria-expanded={open} aria-controls="account-menu" aria-label={`Account menu, ${user.name}, ${roleLabel}`}
-        data-speak={`Account menu, ${user.name}, ${roleLabel}`}
+        aria-expanded={open} aria-controls="account-menu" aria-label={t('Account menu, {name}, {role}', { name: user.name, role: roleLabel })}
+        data-speak={t('Account menu, {name}, {role}', { name: user.name, role: roleLabel })}
         className={`nav-user ${open ? 'is-open' : ''}`}>
         <span aria-hidden="true" className="nav-avatar">{initials(user.name)}</span>
         <span className="hidden lg:flex flex-col items-start leading-tight text-left">
@@ -41,25 +42,25 @@ export function UserMenu({ user, onNavigate, items }: {
           </div>
           <div className="py-1">
             {items.map(i => (
-              <button key={i.target} data-speak={i.label} onClick={() => go(i.target)} className="nav-menu-item">
-                <span aria-hidden="true">{i.icon}</span>{i.label}
+              <button key={i.target} data-speak={t(i.label)} onClick={() => go(i.target)} className="nav-menu-item">
+                <span aria-hidden="true">{i.icon}</span>{t(i.label)}
               </button>
             ))}
-            <button data-speak="Display settings" onClick={() => { setOpen(false); openDisplaySettings() }} className="nav-menu-item">
+            <button data-speak={t('Display settings')} onClick={() => { setOpen(false); openDisplaySettings() }} className="nav-menu-item">
               <span aria-hidden="true">Aa</span>Display settings
             </button>
-            <button data-speak="Privacy Notice" onClick={() => { setOpen(false); openLegal('privacy') }} className="nav-menu-item">
+            <button data-speak={t('Privacy Notice')} onClick={() => { setOpen(false); openLegal('privacy') }} className="nav-menu-item">
               <span aria-hidden="true">🔒</span>Privacy Notice
             </button>
-            <button data-speak="Terms and Conditions" onClick={() => { setOpen(false); openLegal('terms') }} className="nav-menu-item">
+            <button data-speak={t('Terms and Conditions')} onClick={() => { setOpen(false); openLegal('terms') }} className="nav-menu-item">
               <span aria-hidden="true">📄</span>Terms and Conditions
             </button>
-            <button data-speak="Accessibility: the WCAG guidelines Blind Jobs follows" onClick={() => { setOpen(false); openLegal('accessibility') }} className="nav-menu-item">
+            <button data-speak={t('Accessibility: the WCAG guidelines Blind Jobs follows')} onClick={() => { setOpen(false); openLegal('accessibility') }} className="nav-menu-item">
               <span aria-hidden="true">♿</span>Accessibility
             </button>
           </div>
           <div className="py-1 border-t border-gray-100">
-            <button data-speak="Log out" onClick={() => go('login')} className="nav-menu-item text-red-700 hover:bg-red-50">
+            <button data-speak={t('Log out')} onClick={() => go('login')} className="nav-menu-item text-red-700 hover:bg-red-50">
               <span aria-hidden="true">⎋</span>Log out
             </button>
           </div>

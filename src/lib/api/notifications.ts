@@ -51,6 +51,7 @@ export async function notifyNewApplication(job: Job, applicantId: string) {
 function jobMatchNotice(job: Job, m: JobMatch): string {
   const why = [
     m.skills.length ? `your skills (${m.skills.join(', ')})` : '',
+    m.experience.length ? `your work as ${m.experience.join(', ')}` : '',
     m.location ? `your location (${job.location})` : '',
   ].filter(Boolean).join(' and ')
   return `New job: ${job.jobTitle} at ${job.companyName}. It matches ${why}.`

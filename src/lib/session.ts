@@ -7,11 +7,10 @@
 //
 // The password is never kept, only the account's id, role, email and name.
 import { APPLICANT_SCREENS, EMPLOYER_SCREENS } from '@/constants'
+import { SIGNED_OUT_SCREENS } from '@/lib/routes'
 import type { Screen, User } from '@/types'
 
 const KEY = 'bj-session'
-
-const SIGNED_OUT_SCREENS: Screen[] = ['intro', 'login', 'register-applicant', 'register-employer']
 
 export interface Session { user: User | null; screen: Screen }
 
