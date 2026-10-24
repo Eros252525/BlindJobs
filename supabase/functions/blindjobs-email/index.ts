@@ -219,7 +219,8 @@ async function sendReset(body: Record<string, unknown>) {
     if (typed && typed === phMobile(profile?.mobile)) to = typed
   } else {
     const typed = String(body.contact || '').trim().toLowerCase()
-    const known = [user.email, profile?.email].filter(Boolean).map((e: string) => e.trim().toLowerCase())
+    // an applicant's added email only once they confirmed it with a code, so a typo never gets codes
+    const known = [user.email, profile?.emailVerified ? profile.email : ''].filter(Boolean).map((e: string) => e.trim().toLowerCase())
     if (typed && known.includes(typed)) to = typed
   }
   if (!to) return

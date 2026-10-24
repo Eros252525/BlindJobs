@@ -3,7 +3,8 @@ import { api } from '@/lib/api'
 import { t, useLang } from '@/lib/i18n'
 import { mobileDigits, mobileProblem, phMobile } from '@/lib/phone'
 import { toast } from '@/lib/toast'
-import { emailProblem, focusFirst, missingFields, missingMessage, NAME_MAX, type RequiredField } from '@/lib/validation'
+import { gmailAddress, gmailProblem } from '@/lib/gmail'
+import { focusFirst, missingFields, missingMessage, NAME_MAX, type RequiredField } from '@/lib/validation'
 import { ACCOMMODATIONS, ASSISTIVE_TECH, DISABILITY_TYPES, EDUCATION_LEVELS, LANGUAGES, MAX_EXPERIENCE, MAX_YEARS, requiredProfileFields, WORK_SETUPS, yearsFromPeriod } from '@/lib/resume'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { FormField } from '@/components/ui/FormField'
@@ -11,6 +12,7 @@ import { PhotoField } from '@/components/ui/PhotoField'
 import { SkillPicker } from '@/components/ui/SkillPicker'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ApplicantProfile, User, WorkExperience } from '@/types'
+import { EmailConfirm } from './profile/EmailConfirm'
 import { ResumeView } from './profile/ResumeView'
 
 type P = ApplicantProfile
@@ -68,6 +70,8 @@ export function ProfileScreen({ user, focusField, onNameChange }: {
   const [splitLastName, setSplitLastName] = useState('')
   // The work experience whose Remove was pressed, waiting for "Yes, remove"
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null)
+  // A Gmail just saved: its confirmation code goes out straight away
+  const [sendCodeNow, setSendCodeNow] = useState(false)
   // last saved version, so Cancel can discard unsaved edits
   const saved = useRef<{ profile: P; skills: string[] }>({ profile: {}, skills: [] })
   // element to focus after the next render (mode switch, added/removed experience)
@@ -119,7 +123,8 @@ export function ProfileScreen({ user, focusField, onNameChange }: {
     if (missing.length) { setError(missingMessage(missing)); focusFirst(missing); return }
     const badMobile = mobileProblem(profile.mobile)
     if (badMobile) { fail('pf-mobile', badMobile); return }
-    const badEmail = signsInWithEmail ? null : emailProblem(profile.email)
+    // only Gmail: the email service proves an address with a code, and it sends to Gmail only
+    const badEmail = signsInWithEmail || !profile.email?.trim() ? null : gmailProblem(profile.email)
     if (badEmail) { fail('pf-email', badEmail); return }
     if (years.length) {
       setError(t('{fields}: type a number of years from 0 to {max}, such as 2 or 0.5.', { fields: years.map(f => f.label).join(', '), max: MAX_YEARS }))
@@ -131,13 +136,17 @@ export function ProfileScreen({ user, focusField, onNameChange }: {
       // drop experience rows left completely blank
       const experience = (profile.experience ?? []).filter(x => x.title.trim() || x.company.trim() || x.period.trim())
       // saved as the 10 digits after +63, however it was typed
-      const next = { ...profile, mobile: phMobile(profile.mobile) ?? '', email: (profile.email || '').trim().toLowerCase(), experience, skills, updatedAt: new Date().toISOString() }
+      const email = signsInWithEmail ? profile.email! : profile.email?.trim() ? gmailAddress(profile.email) : ''
+      // a new or changed address must be confirmed again before codes go to it
+      const emailVerified = !!email && (signsInWithEmail || (email === saved.current.profile.email && !!saved.current.profile.emailVerified))
+      const next = { ...profile, mobile: phMobile(profile.mobile) ?? '', email, emailVerified, experience, skills, updatedAt: new Date().toISOString() }
       await api.updateProfile(user.id, next)
       saved.current = { profile: next, skills }
       setProfile(next)
       setSplitLastName('')
       onNameChange?.(`${next.firstName || ''} ${next.lastName || ''}`.trim())
       toast(t('Resume saved.'), 'success')
+      setSendCodeNow(!!email && !emailVerified)
       switchTo('view')
     } catch (e: any) { toast(t("Couldn't save your resume: {reason}", { reason: e.message }), 'error') }
     finally { setSaving(false) }
@@ -153,7 +162,15 @@ export function ProfileScreen({ user, focusField, onNameChange }: {
   if (!profile) return <div className="flex-1 flex items-center justify-center text-white" role="status">{t('Loading…')}</div>
 
   if (mode === 'view') {
-    return <ResumeView profile={profile} skills={skills.filter(Boolean)} onEdit={() => switchTo('edit')} />
+    // An added Gmail waits here until it is confirmed with the emailed code
+    const confirmEmail = !signsInWithEmail && !!profile.email && !profile.emailVerified
+    const confirmed = () => {
+      const next = { ...profile, emailVerified: true }
+      saved.current = { ...saved.current, profile: next }
+      setProfile(next); setSendCodeNow(false)
+    }
+    return <ResumeView profile={profile} skills={skills.filter(Boolean)} onEdit={() => switchTo('edit')}
+      top={confirmEmail ? <EmailConfirm key={profile.email} userId={user.id} email={profile.email!} sendNow={sendCodeNow} onConfirmed={confirmed} /> : undefined} />
   }
 
   const set = <K extends keyof P>(k: K, v: P[K]) => setProfile(p => ({ ...p, [k]: v }))
@@ -251,11 +268,16 @@ export function ProfileScreen({ user, focusField, onNameChange }: {
               <p id="pf-mobile-help" className="mt-1 text-sm text-gray-600">{t('Philippine mobile only: 10 digits, starting with 9. A forgotten password is reset with a code texted here.')}</p>
             </FormField>
             {!signsInWithEmail && (
-              <FormField id="pf-email" label={t('Email address')}>
+              <FormField id="pf-email" label={t('Gmail address')}>
                 <input id="pf-email" className="input" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
                   placeholder={t('e.g., juan.cruz@gmail.com')} value={profile.email || ''} onChange={(e) => set('email', e.target.value)}
                   aria-invalid={invalid.has('pf-email')} aria-describedby={describe('pf-email', 'pf-email-help')} />
-                <p id="pf-email-help" className="mt-1 text-sm text-gray-600">{t("Only if you have one. It is a second way to reset a forgotten password; you still sign in with your username.")}</p>
+                <p id="pf-email-help" className="mt-1 text-sm text-gray-600">
+                  {t('Only if you have one. After you save, we email a code to confirm it; then it can be used to reset a forgotten password. You still sign in with your username, and employers do not see it.')}
+                  {profile.email && profile.email === saved.current.profile.email && (
+                    <strong className="block mt-1">{saved.current.profile.emailVerified ? `✓ ${t('Confirmed')}` : t('Not confirmed yet')}</strong>
+                  )}
+                </p>
               </FormField>
             )}
             <FormField id="pf-location" label={t('City or province')}>

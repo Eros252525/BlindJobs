@@ -6,7 +6,7 @@
 // What goes in: skills, work setup, location and experience. What never goes in: the type of visual
 // disability, which may not count against an applicant (Magna Carta for Persons
 // with Disability, RA 7277).
-import { isGoodMatch, jobSkillList, matchReason, relatedExperience, sameArea, skillMatch, skillMatches, skillWeight } from '@/lib/jobs/matching'
+import { isCommonSkill, isGoodMatch, jobSkillList, matchReason, relatedExperience, sameArea, skillMatch, skillMatches, skillWeight } from '@/lib/jobs/matching'
 import type { ApplicantProfile, Job } from '@/types'
 
 export type FitPartId = 'skills' | 'setup' | 'location' | 'experience'
@@ -28,6 +28,8 @@ export interface JobFit {
   parts: FitPart[]
   /** False when the employer limited the job to visual categories the applicant is not in. */
   eligible: boolean
+  /** Why the score is lower than its parts add up to, when it was capped (see NO_MAIN_SKILL_CAP). */
+  cap?: string
   summary: string
 }
 
@@ -35,6 +37,12 @@ export interface JobFit {
 // skills listed, no work setup given) is left out and the rest are scaled up
 // to 100, so a job is never marked down for something it did not ask for.
 const WEIGHTS: Record<FitPartId, number> = { skills: 50, setup: 20, location: 15, experience: 15 }
+
+// Being good at Typing does not make someone a web developer. When a job names
+// skills beyond the common ones and none of those is on the profile, the score
+// stays a Low fit however well the setup, place and experience suit: they do not
+// matter if the person cannot do the work.
+export const NO_MAIN_SKILL_CAP = 24
 
 const isRemote = (job: Job) => /remote|work from home|wfh/i.test(`${job.jobType || ''} ${job.location || ''}`)
 
@@ -105,15 +113,22 @@ export function jobFit(job: Job, p: ApplicantProfile | null | undefined): JobFit
     })
   }
 
-  // The score is the sum of the parts as shown, so the reasons always add up to it.
+  // The score is the sum of the parts as shown, so the reasons add up to it; the one
+// exception is the cap below, and then `cap` says why.
   const maxes = shareOut(raw.map(part => WEIGHTS[part.id]), 100)
   const parts: FitPart[] = raw.map(({ share, ...part }, i) => ({ ...part, max: maxes[i], earned: Math.round(share * maxes[i]) }))
-  const score = parts.reduce((sum, part) => sum + part.earned, 0)
+  const total = parts.reduce((sum, part) => sum + part.earned, 0)
+  const mainSkills = wanted.filter(s => !isCommonSkill(s))
+  const noMainSkill = mainSkills.length > 0 && !mainSkills.some(s => skillMatches(s, mine))
+  const score = noMainSkill ? Math.min(total, NO_MAIN_SKILL_CAP) : total
+  const cap = noMainSkill && total > NO_MAIN_SKILL_CAP
+    ? `Kept at ${NO_MAIN_SKILL_CAP}, not ${total}: none of the job's main skills (${mainSkills.join(', ')}) are on the profile, so setup, location and experience cannot make it a better fit.`
+    : undefined
 
   const cats = job.disabilityCategories || []
   const eligible = !cats.length || cats.some(c => c.toLowerCase() === (profile.disabilityType || '').toLowerCase())
 
-  return { score, parts, eligible, summary: fitSummary(score, parts, eligible) }
+  return { score, parts, eligible, cap, summary: fitSummary(score, parts, eligible) }
 }
 
 /** Splits `total` whole points in proportion to `weights`; leftover points go to the largest remainders. */

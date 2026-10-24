@@ -31,10 +31,8 @@ blindss/
 │   │   ├── auth/               Welcome guide, Sign in, Register (applicant, employer)
 │   │   │   └── register/       Applicant registration, one file per step (account, work profile,
 │   │   │                       finish), plus the step list and the frame around them
-│   │   ├── applicant/          Dashboard, Profile (resume), Assessments, Jobs
+│   │   ├── applicant/          Dashboard, Profile (resume), Jobs
 │   │   │   ├── profile/        The read-only resume (the edit form is ProfileScreen.tsx)
-│   │   │   └── assessments/
-│   │   │       └── health/     RAND-36 health survey: consent, question pages, results
 │   │   ├── employer/           Dashboard, Post a Job, Applicants board
 │   │   │   └── applicants/     What an employer reviews in the applicant dialog: job fit,
 │   │   │                       accommodations
@@ -57,12 +55,11 @@ blindss/
 │   │   │   └── braille.ts            Braille dot patterns for letters
 │   │   ├── assessment/
 │   │   │   ├── work-categories.ts    Kinds of work a job can be tagged with
-│   │   │   └── rand36.ts             RAND-36 items, answer choices and RAND's scoring
 │   │   ├── api/                Everything that talks to Supabase; screens import '@/lib/api'
 │   │   │   ├── client.ts             The connection, the key → JSON helpers, the storage layout
 │   │   │   ├── auth.ts               Register and sign in
 │   │   │   ├── profile.ts            Applicant profile
-│   │   │   ├── health.ts             Health survey answers (own row, never on the profile)
+│   │   │   ├── health.ts             Deletes health survey answers left by earlier versions
 │   │   │   ├── jobs.ts               Job posts
 │   │   │   ├── applications.ts       Applying, and application stages
 │   │   │   ├── notifications.ts      The bell
@@ -127,7 +124,8 @@ Applicant registration is one guided flow of three steps. The account is created
 last one, so nothing is stored about someone who stops part-way.
 
 1. **Account and consent.** First, middle and last name (up to 50 characters each),
-   Philippine mobile number, username (no email), password (at least 8 characters);
+   Philippine mobile number, an optional Gmail (many blind applicants have no email;
+   partially and legally blind applicants often do), username, password (at least 8 characters);
    Privacy Notice and Terms, versions recorded on the account. The username is checked
    for being free here. The mobile number is asked now because applying needs it and a
    forgotten password is reset with a code texted to it.
@@ -142,6 +140,9 @@ After that:
   are dropped and the rest scaled to 100. Common skills (Typing, Communication, …; the list
   is `COMMON_SKILLS` in `src/lib/jobs/matching.ts`) count a quarter as much as other skills.
   A past job related to this one counts in full towards experience, any other past job half.
+  If a job names skills beyond the common ones and none of them is on the profile, the score
+  is kept at 24 at most (a Low fit): typing well does not make someone a web developer, and
+  setup, location and experience cannot make up for that (`NO_MAIN_SKILL_CAP`).
   Jobs are listed best fit first. Applicants do not see the score (only the order, and an
   "Open to …" note naming the visual categories when a job is limited to others); employers
   see it with its reasons when reviewing an applicant.
@@ -163,14 +164,14 @@ After that:
   paused while the employer edits it; saving or cancelling puts its status back.
 - **Employer review.** The same score and reasons, and the accommodations the applicant asked
   for, with a message to start that conversation.
-- **Assessments page: the health survey (RAND-36).** Optional. It is never needed to apply,
-  and answering or skipping it changes nothing about applications or matching. **It is not
-  saved**: answers are scored in the browser and kept only while the Assessments page is
-  open; the applicant can download a copy as a text file. The database is readable with the
-  public key, so health answers must never be written to it. Copies saved by earlier
-  versions (`health_assessment:<userId>`) are shown once and deleted when the applicant next
-  opens the page (`takeOldHealthAssessment` in `src/lib/api/health.ts`). Item and answer
-  wording is RAND's and must not be reworded (`src/lib/assessment/rand36.ts`).
+- **The health survey (RAND-36) was removed on 2026-10-24.** Its purpose was to show
+  employers whether an applicant is healthy enough to work, which the Magna Carta for Persons
+  with Disability (RA 7277, Sec. 32) treats as discrimination, and health answers should not
+  be collected without a lawful need. Answers saved by earlier versions
+  (`health_assessment:<userId>`) are deleted when the applicant next opens the dashboard
+  (`deleteOldHealthAnswers` in `src/lib/api/health.ts`). To ask employers' real question,
+  "can this person work on-site, and what do they need?", ask the applicant job-related
+  questions instead (work setup and accommodations are already on the profile).
 
 The skills check (a 10-question test per kind of work) was removed on 2026-10-20. Its code
 is kept in `_removed/skills-check/`, with a README on how it was wired in.
@@ -184,8 +185,10 @@ Rules that keep this fair, and must survive any change:
 
 ## Email: sign-up codes and sign-in alerts
 
-Applicants register with a **username and no email** (`src/lib/username.ts`): many blind
-applicants have no email address. Employers register with a Gmail address
+Applicants register with a **username** (`src/lib/username.ts`): many blind applicants
+have no email address. A Gmail is optional, at registration or on the Profile page; it is
+saved unconfirmed and used for password resets only after the applicant types back the
+6-digit code emailed to it (`EmailConfirm`). Home and Profile remind them until then. Employers register with a Gmail address
 (`src/lib/gmail.ts` checks Google's username rules); to prove it is real, registration
 emails it a 6-digit code that must be typed back before the account is created. Every
 sign-in to an account that has an email sends it a short alert.
@@ -255,7 +258,7 @@ Code is written in English with each piece of text wrapped in `t('…')` (`src/l
 English. To list text that still needs translating:
 `python scripts/i18n-keys.py src src/lib/i18n/fil.ts`.
 
-Not translated, on purpose: the RAND-36 questions (RAND's wording), the Privacy Notice and
+Not translated, on purpose: the Privacy Notice and
 Terms (legal text needs a lawyer's translation), the employer screens, and what people type
 (job posts, messages, skills). Saved values such as disability types are stored in English
 and only shown translated. The Filipino was written by Claude and should be checked by a

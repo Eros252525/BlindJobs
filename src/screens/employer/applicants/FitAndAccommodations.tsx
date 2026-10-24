@@ -19,6 +19,7 @@ export function FitAndAccommodations({ applicant }: { applicant: Applicant }) {
               </li>
             ))}
           </ul>
+          {fit.cap && <p className="mt-2 text-sm font-semibold text-gray-900">{fit.cap}</p>}
           <p className="mt-2 text-xs text-gray-600">
             A guide for your review, not a decision. The score leaves out the applicant's type of visual disability, which may not be used against them (Republic Act No. 7277).
           </p>

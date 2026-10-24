@@ -2,6 +2,7 @@ import { useState, type FormEvent, type RefObject } from 'react'
 import { api } from '@/lib/api'
 import type { Consent } from '@/lib/documents/legal'
 import { t, useLang } from '@/lib/i18n'
+import { gmailProblem } from '@/lib/gmail'
 import { mobileDigits, mobileProblem } from '@/lib/phone'
 import { normalizeUsername, usernameProblem } from '@/lib/username'
 import { focusFirst, missingFields, missingMessage, NAME_MAX, nameProblem, PASSWORD_MIN, passwordProblem } from '@/lib/validation'
@@ -59,6 +60,8 @@ export function AccountStep({ headingRef, form, consent, onForm, onConsent, onCo
       if (tooLong) { fail(tooLong[0], nameProblem(tooLong[1], tooLong[2])!); return }
       const badMobile = mobileProblem(form.mobile)
       if (badMobile) { fail('reg-mobile', badMobile); return }
+      const badEmail = form.email.trim() ? gmailProblem(form.email) : null
+      if (badEmail) { fail('reg-email', badEmail); return }
       const badUsername = usernameProblem(form.username)
       if (badUsername) { fail('reg-username', badUsername); return }
       const weak = passwordProblem(form.password)
@@ -91,7 +94,7 @@ export function AccountStep({ headingRef, form, consent, onForm, onConsent, onCo
     <AuthShell width="max-w-md" braille showcase={t('Register as applicant')}>
       <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold text-gray-900 focus:outline-none">{t('Register as applicant')}</h1>
       <p className="mt-2 text-gray-700">
-        {t('Step 1 of {n}. No email needed: you choose a username to sign in with. After this come your skills and work preferences. Your account is created at the end.', { n: STEPS.length })}
+        {t('Step 1 of {n}. You sign in with a username you choose; email is optional. After this come your skills and work preferences. Your account is created at the end.', { n: STEPS.length })}
       </p>
       <form className="mt-6 space-y-5" onSubmit={submit} noValidate>
         <fieldset className="space-y-4">
@@ -109,6 +112,12 @@ export function AccountStep({ headingRef, form, consent, onForm, onConsent, onCo
               placeholder={t('e.g., 9171234567')} value={form.mobile} onChange={(e) => set('mobile', mobileDigits(e.target.value))}
               aria-invalid={invalid.has('reg-mobile')} aria-describedby={describe('reg-mobile', 'reg-mobile-prefix', 'reg-mobile-help')} />
           </div>
+        </FormField>
+        <FormField id="reg-email" label={t('Gmail address')}>
+          <p id="reg-email-help" className="text-sm text-gray-600 mb-2">{t('Leave it empty if you have no email. If you add one, we email you a code to confirm it after you sign in; then it can also reset a forgotten password. You still sign in with your username.')}</p>
+          <input id="reg-email" className="input" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false}
+            placeholder={t('e.g., juan.cruz@gmail.com')} value={form.email} onChange={(e) => set('email', e.target.value)}
+            aria-invalid={invalid.has('reg-email')} aria-describedby={describe('reg-email', 'reg-email-help')} />
         </FormField>
         <FormField id="reg-username" label={t('Username')} required>
           <p id="reg-username-help" className="text-sm text-gray-600 mb-2">{t('You type this to sign in. At least 4 letters or numbers, no spaces; for example juan.cruz.')}</p>

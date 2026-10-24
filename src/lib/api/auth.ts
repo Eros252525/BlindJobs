@@ -68,7 +68,7 @@ async function findUser(input: string): Promise<{ entry: any } | null> {
 const BAD_SIGN_IN = () => t('Email, username or password is incorrect.')
 
 export async function register(body: Record<string, any>) {
-  const { role, username, emailUsername, password, firstName, lastName, middleName, suffix, mobile, gender, disabilityType, skills, companyName, consent } = body
+  const { role, username, emailUsername, optionalEmail, password, firstName, lastName, middleName, suffix, mobile, gender, disabilityType, skills, companyName, consent } = body
   if (!password) throw new Error(t('Please fill in: {fields}.', { fields: t('Password') }))
   const weak = passwordProblem(password)
   if (weak) throw new Error(weak)
@@ -89,6 +89,11 @@ export async function register(body: Record<string, any>) {
     if (!firstName?.trim() || !lastName?.trim()) throw new Error('First name and last name are required')
     const badMobile = mobileProblem(mobile)
     if (badMobile) throw new Error(badMobile)
+    // Optional, and only a Gmail (the email service confirms and sends to Gmail only).
+    // Saved unconfirmed: it is used for nothing until the applicant types back the emailed code.
+    const badEmail = optionalEmail?.trim() ? gmailProblem(optionalEmail) : null
+    if (badEmail) throw new Error(badEmail)
+    const contactEmail = optionalEmail?.trim() ? gmailAddress(optionalEmail) : ''
     const tooLong = nameProblem('First name', firstName) || nameProblem('Middle name', middleName) || nameProblem('Last name', lastName)
     if (tooLong) throw new Error(tooLong)
     // `consent` is the record of what was agreed to: document versions and the time
@@ -96,7 +101,7 @@ export async function register(body: Record<string, any>) {
     await kvSet(`user_by_username:${name}`, { userId: id })
     await kvSet(`applicant_profile:${id}`, {
       userId: id, username: name, firstName: firstName.trim(), lastName: lastName.trim(),
-      middleName: (middleName || '').trim(), suffix: suffix || '', email: '',
+      middleName: (middleName || '').trim(), suffix: suffix || '', email: contactEmail, emailVerified: false,
       mobile: phMobile(mobile) ?? '', gender: gender || '', disabilityType: disabilityType || '',
       skills: skills || [], photoUrl: null,
     })

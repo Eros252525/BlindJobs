@@ -14,7 +14,8 @@ export async function getProfile(userId: string) {
 export async function updateProfile(userId: string, body: Record<string, any>) {
   const tooLong = nameProblem('First name', body.firstName) || nameProblem('Middle name', body.middleName) || nameProblem('Last name', body.lastName)
   if (tooLong) throw new Error(tooLong)
-  // The optional email an applicant adds for password resets: shaped like an address, or empty
+  // The optional email an applicant adds for password resets: shaped like an address, or empty.
+  // A changed address is never saved as confirmed: only EmailConfirm sets that, after the code.
   const badEmail = emailProblem(body.email)
   if (badEmail) throw new Error(badEmail)
   // Philippine mobile numbers only, checked here too so no way of saving gets round it
@@ -24,6 +25,7 @@ export async function updateProfile(userId: string, body: Record<string, any>) {
     body = { ...body, mobile: phMobile(body.mobile) }
   }
   const existing = await kvGet(`applicant_profile:${userId}`) || {}
+  if ('email' in body && body.email !== existing.email && body.emailVerified) body = { ...body, emailVerified: false }
   const updated = { ...existing, ...body }
   await kvSet(`applicant_profile:${userId}`, updated)
   return updated

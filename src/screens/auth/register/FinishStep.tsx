@@ -9,9 +9,9 @@ import type { WorkProfile } from './WorkProfileStep'
 const ERROR_ID = 'reg-finish-error'
 
 /** The last registration step: what will be saved, and the button that creates the account. */
-export function FinishStep({ headingRef, name, mobile, username, work, loading, error, onCreate }: {
+export function FinishStep({ headingRef, name, mobile, email, username, work, loading, error, onCreate }: {
   headingRef: RefObject<HTMLHeadingElement | null>
-  name: string; mobile: string; username: string
+  name: string; mobile: string; email: string; username: string
   work: WorkProfile
   loading: boolean; error: string
   onCreate: () => void
@@ -24,6 +24,7 @@ export function FinishStep({ headingRef, name, mobile, username, work, loading, 
       <dl className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm rounded-xl bg-gray-50 border border-gray-200 p-5">
         <Fact label={t('Name')} value={name} />
         <Fact label={t('Mobile number')} value={formatMobile(mobile)} />
+        <Fact label={t('Gmail address')} value={email} />
         <Fact label={t('Username (to sign in)')} value={username} />
         <Fact label={t('Disability type')} value={work.disabilityType && t(work.disabilityType)} />
         <Fact label={t('Skills')} value={work.skills.join(', ')} />

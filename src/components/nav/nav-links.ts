@@ -5,7 +5,6 @@ export type NavLink = { label: string; icon: string; target: Screen }
 export const APPLICANT_LINKS: NavLink[] = [
   { label: 'Home', icon: '🏠', target: 'dashboard' },
   { label: 'Profile', icon: '👤', target: 'profile' },
-  { label: 'Assessments', icon: '📝', target: 'assessments' },
   { label: 'Jobs', icon: '💼', target: 'jobs' },
   { label: 'Messages', icon: '💬', target: 'messages' },
 ]

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import { NO_CONSENT } from '@/lib/documents/legal'
+import { gmailAddress } from '@/lib/gmail'
 import { t, useLang } from '@/lib/i18n'
 import { useStepFocus } from '@/hooks/useStepFocus'
 import type { User } from '@/types'
@@ -64,7 +65,7 @@ export function RegisterApplicantScreen({ onRegistered, onBack }: {
     try {
       if (!created.current) {
         created.current = await api.register({
-          role: 'applicant', firstName: form.firstName.trim(), middleName: form.middleName.trim(), lastName: form.lastName.trim(), mobile: form.mobile,
+          role: 'applicant', firstName: form.firstName.trim(), middleName: form.middleName.trim(), lastName: form.lastName.trim(), mobile: form.mobile, optionalEmail: form.email,
           username: form.username, password: form.password, consent,
           disabilityType: work.disabilityType,
           skills: work.skills,
@@ -100,7 +101,7 @@ export function RegisterApplicantScreen({ onRegistered, onBack }: {
 
   return (
     <StepFrame step="finish" onPrev={previous}>
-      <FinishStep headingRef={headingRef} name={accountName(form)} mobile={form.mobile} username={form.username.trim().toLowerCase()} work={work}
+      <FinishStep headingRef={headingRef} name={accountName(form)} mobile={form.mobile} email={form.email.trim() ? gmailAddress(form.email) : ''} username={form.username.trim().toLowerCase()} work={work}
         loading={loading} error={error} onCreate={createAccount} />
     </StepFrame>
   )

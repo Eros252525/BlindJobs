@@ -13,7 +13,11 @@ const formatUpdated = (iso?: string) => (iso ? fullDateTime(iso) : '')
  * the facts someone looks up (contact, skills, tools) sit in the side panel.
  * In the page's reading order the wide column comes first.
  */
-export function ResumeView({ profile, skills, onEdit }: { profile: ApplicantProfile; skills: string[]; onEdit: () => void }) {
+export function ResumeView({ profile, skills, onEdit, top }: {
+  profile: ApplicantProfile; skills: string[]; onEdit: () => void
+  /** Shown above the resume, e.g. "Confirm your Gmail address". */
+  top?: ReactNode
+}) {
   const name = fullName(profile) || t('Your name')
   const updated = formatUpdated(profile.updatedAt)
   const sections = resumeSections(profile)
@@ -26,6 +30,7 @@ export function ResumeView({ profile, skills, onEdit }: { profile: ApplicantProf
 
   return (
     <div className="flex-1 p-4 sm:p-6 pb-24 sm:pb-24">
+      {top}
       <article aria-labelledby="pf-view-title" className="w-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <header className="px-6 sm:px-8 py-6 flex flex-wrap items-center gap-5 border-b border-gray-200">
           {profile.photoUrl ? (

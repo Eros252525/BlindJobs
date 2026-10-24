@@ -13,9 +13,10 @@ export const STEP_NAMES: Record<Step, string> = {
 /** A step's place in the flow, from 1. */
 export const stepNumber = (step: Step) => STEPS.indexOf(step) + 1
 
-export type AccountForm = { firstName: string; middleName: string; lastName: string; mobile: string; username: string; password: string }
+// `email` is optional: many blind applicants have none, but partially and legally blind applicants often do
+export type AccountForm = { firstName: string; middleName: string; lastName: string; mobile: string; email: string; username: string; password: string }
 
-export const EMPTY_ACCOUNT_FORM: AccountForm = { firstName: '', middleName: '', lastName: '', mobile: '', username: '', password: '' }
+export const EMPTY_ACCOUNT_FORM: AccountForm = { firstName: '', middleName: '', lastName: '', mobile: '', email: '', username: '', password: '' }
 
 /** "Juan Santos Dela Cruz": the name as the summary shows it. */
 export const accountName = (f: AccountForm) => [f.firstName, f.middleName, f.lastName].map(s => s.trim()).filter(Boolean).join(' ')

@@ -3,6 +3,8 @@
 // They check the form of the address, not that the account exists: only an
 // email sent to it and answered can prove that.
 
+import { t } from '@/lib/i18n'
+
 const SUFFIX = /@(gmail|googlemail)\.com$/
 
 /** What was typed, without a trailing @gmail.com, trimmed and in lower case. */
@@ -17,11 +19,11 @@ export const gmailAddress = (input: string) => `${gmailUsername(input)}@gmail.co
 export function gmailProblem(input: string): string | null {
   const raw = (input || '').trim().toLowerCase()
   if (!raw) return null // "required" is reported by the form's own check
-  if (!raw.includes('@')) return `Type your whole Gmail address, for example ${raw.replace(/[^a-z0-9.]/g, '') || 'juan.cruz'}@gmail.com.`
-  if (!SUFFIX.test(raw)) return 'Only Gmail addresses can be used. Type an address that ends in @gmail.com.'
+  if (!raw.includes('@')) return t('Type your whole Gmail address, for example {example}.', { example: `${raw.replace(/[^a-z0-9.]/g, '') || 'juan.cruz'}@gmail.com` })
+  if (!SUFFIX.test(raw)) return t('Only Gmail addresses can be used. Type an address that ends in @gmail.com.')
   const name = gmailUsername(raw)
-  if (/[^a-z0-9.]/.test(name)) return 'A Gmail username has only letters, numbers and periods. Check for spaces or other symbols.'
-  if (name.length < 6 || name.length > 30) return `A Gmail username is 6 to 30 characters long. "${name}" has ${name.length}.`
-  if (/^\.|\.$|\.\./.test(name)) return 'A Gmail username cannot start or end with a period, or have two periods in a row.'
+  if (/[^a-z0-9.]/.test(name)) return t('A Gmail username has only letters, numbers and periods. Check for spaces or other symbols.')
+  if (name.length < 6 || name.length > 30) return t('A Gmail username is 6 to 30 characters long. "{name}" has {n}.', { name, n: name.length })
+  if (/^\.|\.$|\.\./.test(name)) return t('A Gmail username cannot start or end with a period, or have two periods in a row.')
   return null
 }

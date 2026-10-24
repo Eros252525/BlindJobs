@@ -2,7 +2,7 @@
 // the code that proves a Gmail address is real, and the new sign-in alert.
 // The Gmail password and the codes stay on the server; the browser only asks.
 import { t } from '@/lib/i18n'
-import { supabase } from './client'
+import { kvDelete, supabase } from './client'
 
 const FUNCTION = 'blindjobs-email'
 
@@ -28,6 +28,9 @@ export const sendEmailCode = (email: string) => call('send-code', { email })
 
 /** Checks the code; on success the address may be used to register. */
 export const verifyEmailCode = (email: string, code: string) => call('verify-code', { email, code })
+
+/** Removes the server's "this address was proved" mark once a profile email is confirmed with it. */
+export const clearEmailVerified = (email: string) => kvDelete(`email_verified:${email}`)
 
 /** Emails "your account was just signed in to". Never blocks signing in: a failure is only logged. */
 export function sendLoginAlert(email: string) {

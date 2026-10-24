@@ -29,6 +29,13 @@ export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenProfileFiel
   // a notification just arrived: reload so the lists below match what it said
   const reload = useUpdateTick()
 
+  // Health survey answers left by earlier versions (the survey was removed): deleted
+  // quietly, along with any results the last version kept in this tab
+  useEffect(() => {
+    api.deleteOldHealthAnswers(user.id).catch(() => {})
+    try { sessionStorage.removeItem('bj-health-results') } catch { /* nothing kept */ }
+  }, [user.id])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -99,6 +106,18 @@ export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenProfileFiel
         </div>
         <p className="text-xs"><strong>{t('Tab')}</strong> {t('moves between tiles and lists ·')} <strong>{t('Enter')}</strong> {t('to open')}</p>
       </header>
+
+      {/* A Gmail given at registration or on the profile, waiting for its emailed code */}
+      {profile?.email && profile.username && !profile.emailVerified && (
+        <section aria-labelledby="dash-email" className="rounded-xl border-2 border-[#a16207] bg-yellow-50 p-4 sm:p-5">
+          <h2 id="dash-email" className="font-bold text-gray-900">{t('Confirm your Gmail address')}</h2>
+          <p className="mt-1 text-sm text-gray-800">{t('Your Gmail, {email}, is not confirmed yet, so codes for a forgotten password are not sent to it.', { email: profile.email })}</p>
+          <button type="button" onClick={() => onNavigate('profile')}
+            className="mt-3 min-h-11 px-4 rounded-md border border-[#1a4fa0] bg-white text-sm font-semibold text-[#1a4fa0] hover:bg-blue-50">
+            {t('Confirm my Gmail')}
+          </button>
+        </section>
+      )}
 
       {profileGaps.length > 0 && (
         <section aria-labelledby="dash-profile-gaps" className="rounded-xl border-2 border-[#a16207] bg-yellow-50 p-4 sm:p-5">

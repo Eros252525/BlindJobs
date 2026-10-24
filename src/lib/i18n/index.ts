@@ -8,9 +8,8 @@
 // A component that shows translated text calls useLang() once, so it redraws when
 // the language changes.
 //
-// Not translated, on purpose: the RAND-36 questions (RAND's wording may not be changed),
-// the Privacy Notice and Terms (legal text; a translation needs a lawyer's review), and
-// what people type themselves (job posts, messages). Saved values such as skills and
+// Not translated, on purpose: the Privacy Notice and Terms (legal text; a translation
+// needs a lawyer's review), and what people type themselves (job posts, messages). Saved values such as skills and
 // disability types stay in English in the data and are translated only when shown.
 import { useSyncExternalStore } from 'react'
 import { FIL } from './fil'
