@@ -108,7 +108,7 @@ async function sendCode(email: string) {
   const code = newCode()
   await put(`email_code:${email}`, { mac: await seal(email, code), sentAt: Date.now(), expiresAt: Date.now() + CODE_MINUTES * 60_000, tries: 0 })
   const spaced = code.split('').join(' ')
-  await mailer.sendMail({
+  await unlessSent(`email_code:${email}`, () => mailer.sendMail({
     from: `Blind Jobs <${FROM}>`, to: email,
     subject: `Your Blind Jobs code is ${code}`,
     text: `Your Blind Jobs code is ${spaced}.\n\nType it on the Blind Jobs page to confirm this is your Gmail address. It works for ${CODE_MINUTES} minutes.\n\nIf you did not ask for this, you can ignore this email.`,
@@ -118,7 +118,13 @@ async function sendCode(email: string) {
       `Type it on the Blind Jobs page to confirm this is your Gmail address. It works for ${CODE_MINUTES} minutes.`,
       'If you did not ask for this, you can ignore this email.',
     ]),
-  })
+  }))
+}
+
+// A code is stored before it is sent; if sending fails, it is removed again, so the
+// next try sends a new one instead of being told (or silently treated as if) one was just sent
+async function unlessSent(key: string, send: () => Promise<unknown>) {
+  try { await send() } catch (e) { await drop(key).catch(() => {}); throw e }
 }
 
 async function verifyCode(email: string, code: unknown) {
@@ -277,10 +283,9 @@ async function sendReset(body: Record<string, unknown>) {
   const code = newCode()
   await put(key, { mac: await seal(user.id, code), sentAt: Date.now(), expiresAt: Date.now() + CODE_MINUTES * 60_000, tries: 0 })
   const spaced = code.split('').join(' ')
-  if (channel === 'sms') {
-    await sendSms(to, `Blind Jobs: your code to reset your password is ${spaced}. It works for ${CODE_MINUTES} minutes. Do not share it with anyone.`)
-  } else {
-    await mailer.sendMail({
+  await unlessSent(key, () => channel === 'sms'
+    ? sendSms(to, `Blind Jobs: your code to reset your password is ${spaced}. It works for ${CODE_MINUTES} minutes. Do not share it with anyone.`)
+    : mailer.sendMail({
       from: `Blind Jobs <${FROM}>`, to,
       subject: `Your Blind Jobs password reset code is ${code}`,
       text: `Your code to reset your Blind Jobs password is ${spaced}.\n\nIt works for ${CODE_MINUTES} minutes. Do not share it with anyone.\n\nIf you did not ask for this, you can ignore this email: your password has not changed.`,
@@ -290,8 +295,7 @@ async function sendReset(body: Record<string, unknown>) {
         `It works for ${CODE_MINUTES} minutes. Do not share it with anyone.`,
         'If you did not ask for this, you can ignore this email: your password has not changed.',
       ]),
-    })
-  }
+    }))
 }
 
 async function resetPassword(body: Record<string, unknown>) {
