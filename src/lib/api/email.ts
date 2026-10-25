@@ -1,14 +1,17 @@
-// Emails sent by the blindjobs-email Edge Function (supabase/functions/blindjobs-email):
-// the code that proves a Gmail address is real, the welcome email, and the new sign-in alert.
+// What the blindjobs-email Edge Function (supabase/functions/blindjobs-email) does:
+// the code that proves a Gmail address is real, the welcome email, the new sign-in
+// alert, password reset, and checking a Sign in with Google.
 // The Gmail password and the codes stay on the server; the browser only asks.
 import { t } from '@/lib/i18n'
+import type { User } from '@/types'
 import { kvDelete, supabase } from './client'
 
 const FUNCTION = 'blindjobs-email'
 
-async function call(action: string, body: Record<string, unknown>) {
-  const { error } = await supabase.functions.invoke(FUNCTION, { body: { action, ...body } })
-  if (!error) return
+/** The function's answer; throws its refusal in words to show. `offline` replaces the no-answer message. */
+async function call(action: string, body: Record<string, unknown>, offline?: string): Promise<any> {
+  const { data, error } = await supabase.functions.invoke(FUNCTION, { body: { action, ...body } })
+  if (!error) return data
   const response: Response | undefined = (error as any).context instanceof Response ? (error as any).context : undefined
   // Supabase's own answer when the function was never deployed (see README, "Email")
   if (response?.status === 404 && !(await response.clone().json().catch(() => null))?.error) {
@@ -16,7 +19,7 @@ async function call(action: string, body: Record<string, unknown>) {
   }
   // No answer at all: offline, or the service is not set up (an undeployed function also
   // fails this way in the browser), so the message names both instead of blaming the connection
-  if (!response) throw new Error(t('Blind Jobs could not send the code. Check your internet connection and try again. If it keeps happening, this service may not be set up yet: please ask Blind Jobs for help.'))
+  if (!response) throw new Error(offline || t('Blind Jobs could not send the code. Check your internet connection and try again. If it keeps happening, this service may not be set up yet: please ask Blind Jobs for help.'))
   // The function answers refusals with { error: "words to show the user" }
   let message = ''
   try { message = (await response.json())?.error ?? '' } catch { /* not JSON */ }
@@ -63,3 +66,15 @@ export const sendResetCode = (role: string, login: string, channel: ResetChannel
 /** Sets a new password with the code from the text message or email. */
 export const resetPassword = (role: string, login: string, code: string, password: string) =>
   call('reset-password', { role, login, code, password })
+
+// ── Sign in with Google ───────────────────────────────────────────────────────
+
+/**
+ * Signs in to the account that uses the Gmail Google's button proved, with the ID token
+ * it gave. The server checks the token with Google; nothing is trusted from the browser.
+ */
+export async function signInWithGoogle(credential: string): Promise<User> {
+  const data = await call('google-sign-in', { credential },
+    t('Could not reach Blind Jobs to finish signing in with Google. Check your internet connection and try again.'))
+  return data.user
+}

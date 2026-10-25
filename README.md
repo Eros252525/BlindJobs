@@ -244,6 +244,23 @@ code itself), `email_verified:<email>` (deleted once the account is made),
 `login_alert:<userId>`, `welcome_sent:<userId>`. Optionally set `SITE_URL` (the Vercel
 address) as a secret too, so the welcome email links to the app.
 
+## Sign in with Google
+
+Under the Sign in form, Google's own button (`src/components/auth/GoogleSignInButton.tsx`)
+signs in to the account that uses the Gmail the person picks, applicant or employer.
+Google proves the address; the email function's `google-sign-in` action checks Google's
+token (that it is real, meant for Blind Jobs, and the address confirmed) and finds the
+account: one registered with that Gmail, or an applicant who added it to their profile
+(which then counts as confirmed). It does not create accounts: someone new still
+registers, so consent and the profile are asked. One Tap, the prompt that pops up by
+itself, is off, because it would interrupt a screen reader.
+
+Setup: in Google Cloud, APIs & Services → Credentials, make an OAuth client ID of type
+"Web application" with the site's addresses (e.g. `https://blind-jobs.vercel.app`,
+`http://localhost:8443`) under Authorized JavaScript origins. Put its Client ID in
+`src/lib/google.ts` and set it as the `GOOGLE_CLIENT_ID` secret of the email function.
+While `src/lib/google.ts` has none, the button is not shown.
+
 ## Forgot password
 
 "Forgot your password?" sits under the Password box on Sign in (`/forgot-password`).

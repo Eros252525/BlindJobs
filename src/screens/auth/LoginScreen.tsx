@@ -3,7 +3,9 @@ import { api } from '@/lib/api'
 import { openLegal } from '@/lib/documents/legal'
 import { t, useLang } from '@/lib/i18n'
 import { focusFirst, missingFields, missingMessage } from '@/lib/validation'
+import { GOOGLE_CLIENT_ID } from '@/lib/google'
 import { AuthShell } from '@/components/auth/AuthShell'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Spinner } from '@/components/ui/Spinner'
@@ -55,6 +57,19 @@ export function LoginScreen({ onLogin, onNavigate, welcome }: {
       document.getElementById('login-password')?.focus()
     }
     finally { setLoading(false) }
+  }
+
+  // Signs in to whichever account uses the Gmail Google proved, applicant or employer
+  const [googleBusy, setGoogleBusy] = useState(false)
+  const [googleError, setGoogleError] = useState('')
+  const handleGoogle = async (credential: string) => {
+    setGoogleError(''); setError(''); setInvalid(new Set()); setGoogleBusy(true)
+    try {
+      onLogin(await api.signInWithGoogle(credential))
+    } catch (e: any) {
+      setGoogleError(e.message)
+    }
+    finally { setGoogleBusy(false) }
   }
 
   const errorFor = (id: string) => (invalid.has(id) ? 'login-error' : undefined)
@@ -109,6 +124,18 @@ export function LoginScreen({ onLogin, onNavigate, welcome }: {
           {loading ? <Spinner label={t('Signing in')} /> : role === 'employer' ? t('Sign in as employer') : t('Sign in as applicant')}
         </button>
       </form>
+
+      {GOOGLE_CLIENT_ID && (
+        <section aria-label={t('Sign in with Google')} className="mt-5">
+          <p className="flex items-center gap-3 text-gray-700 mb-4">
+            <span aria-hidden="true" className="h-px flex-1 bg-gray-300" />{t('or')}<span aria-hidden="true" className="h-px flex-1 bg-gray-300" />
+          </p>
+          <GoogleSignInButton onCredential={handleGoogle} />
+          <p className="mt-2 text-sm text-gray-700 text-center">{t('For an account that uses your Gmail, applicant or employer.')}</p>
+          <p role="status" className="mt-2 text-center font-semibold text-gray-900">{googleBusy ? t('Signing in with Google…') : ''}</p>
+          <ErrorMsg id="google-error" msg={googleError} />
+        </section>
+      )}
 
       <p className="text-center text-gray-700 mt-6 pt-5 border-t border-gray-200">
         {t('New to Blind Jobs?')}{' '}

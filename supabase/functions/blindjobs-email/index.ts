@@ -9,6 +9,8 @@
 //   SEMAPHORE_API_KEY   (optional) Semaphore SMS API key, for password-reset codes by text
 //                       message to applicants' Philippine mobile numbers (semaphore.co)
 //   SITE_URL            (optional) the app's address, linked in the welcome email
+//   GOOGLE_CLIENT_ID    (optional) the OAuth Client ID of the web client in Google Cloud,
+//                       for Sign in with Google (the same one as src/lib/google.ts)
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase itself.
 //
 // Actions (POST JSON with an `action` field):
@@ -22,6 +24,8 @@
 //                texts or emails a password-reset code, if `contact` is the mobile
 //                number or email saved on the account `login` (username or email)
 //   reset-password { role, login, code, password }  checks the code, sets the new password
+//   google-sign-in { credential }  checks Google's ID token; answers { user } for the
+//                account that uses that Gmail
 import nodemailer from 'npm:nodemailer@6.9.16'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -317,6 +321,54 @@ async function resetPassword(body: Record<string, unknown>) {
   await put(`user:${account.user.id}`, { ...account.user, password: await hashPassword(password), passwordChangedAt: new Date().toISOString() })
 }
 
+// ── Sign in with Google ───────────────────────────────────────────────────────
+// Google's button gives the browser an ID token saying which Gmail the person proved
+// they own. Google itself checks the token here (signature, expiry); then it must be
+// meant for Blind Jobs (aud) and the address confirmed. Only existing accounts sign
+// in this way: a new one still registers, so consent and the profile are asked.
+
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') || ''
+
+async function googleSignIn(credential: unknown, req: Request) {
+  if (!GOOGLE_CLIENT_ID) throw new Refusal('Sign in with Google is not set up yet. Sign in with your password instead.', 503)
+  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(String(credential || ''))}`)
+  const claims = res.ok ? await res.json() : null
+  const fromGoogle = claims && ['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss)
+  const confirmed = claims?.email_verified === true || claims?.email_verified === 'true'
+  if (!fromGoogle || claims.aud !== GOOGLE_CLIENT_ID || !confirmed || !claims.email) {
+    throw new Refusal('Google could not confirm your account. Please try again.', 401)
+  }
+  const email = String(claims.email).trim().toLowerCase()
+
+  // An account registered with this address (employers, and applicants from before
+  // usernames), or else an applicant who added it to their profile
+  let ref = await get(`user_by_email:${email}`)
+  if (!ref) {
+    const { data, error } = await db.from(TABLE).select('key').like('key', 'applicant_profile:%').eq('value->>email', email).limit(1)
+    if (error) throw new Error(error.message)
+    if (data?.[0]) ref = { userId: String(data[0].key).slice('applicant_profile:'.length) }
+  }
+  const user = ref && await get(`user:${ref.userId}`)
+  // The person proved they own this address, so saying no account uses it reveals nothing
+  if (!user) throw new Refusal(`No Blind Jobs account uses ${email}. Sign in with your username and password, or create an account first.`, 404)
+
+  const signIn: string = user.email || user.username
+  let name = signIn
+  if (user.role === 'applicant') {
+    const p = await get(`applicant_profile:${user.id}`)
+    if (p) {
+      name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || signIn
+      // Google has just proved the profile's Gmail, so it counts as confirmed
+      if (String(p.email || '').trim().toLowerCase() === email && !p.emailVerified) await put(`applicant_profile:${user.id}`, { ...p, emailVerified: true })
+    }
+  } else {
+    name = (await get(`employer_profile:${user.id}`))?.companyName || signIn
+  }
+  // As with a password sign-in; never stops the sign-in
+  await loginAlert(user.id, req).catch(e => console.error('Sign-in alert not sent:', e))
+  return { id: user.id, role: user.role, email: signIn, name }
+}
+
 // ── entry ─────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -324,6 +376,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply({ error: 'Use POST.' }, 405)
   try {
     const body = await req.json()
+    if (body.action === 'google-sign-in') return reply({ ok: true, user: await googleSignIn(body.credential, req) })
     switch (body.action) {
       case 'send-code': await sendCode(gmail(body.email)); break
       case 'verify-code': await verifyCode(gmail(body.email), body.code); break
