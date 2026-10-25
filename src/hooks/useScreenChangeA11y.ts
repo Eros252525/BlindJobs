@@ -13,6 +13,11 @@ export function useScreenChangeA11y(screen: Screen, label?: string) {
     const name = label ?? (SCREEN_LABELS[screen] && t(SCREEN_LABELS[screen]!))
     document.title = name ? `${name.replace(/\.$/, '')} — Blind Jobs` : 'Blind Jobs'
 
+    // A new screen starts at its top. <main> is the scroll area from tablet width up
+    // and outlives the screen inside it, so it would otherwise keep the old position.
+    document.getElementById('main-content')?.scrollTo({ top: 0 })
+    window.scrollTo({ top: 0 })
+
     // Swapping screens unmounts whatever had focus (e.g. the Sign in button), which
     // drops focus to <body> and leaves NVDA silent. Only then, land on the new
     // screen's heading; focus the user still has (navbar link, autofocus) is left alone.

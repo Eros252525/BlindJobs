@@ -20,11 +20,17 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
   const [modalStep, setModalStep] = useState<'main' | 'hire' | 'reject' | 'discuss'>('main')
   const [responseMsg, setResponseMsg] = useState('')
   const [updating, setUpdating] = useState(false)
+  // Until the first load ends the board says so, instead of showing every column empty
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   // reloads when the bell reports a new application, so the board matches what it said
   const reload = useUpdateTick()
   useEffect(() => {
-    api.getEmployerApplicants(user.id).then(setApplicants).catch(() => {})
+    api.getEmployerApplicants(user.id)
+      .then(a => { setApplicants(a); setLoadError('') })
+      .catch((e: any) => setLoadError(`Couldn't load your applicants: ${e.message}. Reload the page to try again.`))
+      .finally(() => setLoading(false))
   }, [user.id, reload])
 
   useEffect(() => {
@@ -137,8 +143,12 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
         </div>
       </div>
 
+      <div role="status" className={loading || loadError ? 'mb-3 bg-white rounded-xl px-4 py-3 text-sm text-gray-900 flex items-center gap-2' : 'sr-only'}>
+        {loading ? <><Spinner /> Loading applicants…</> : loadError}
+      </div>
+
       {/* Kanban */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      {!loading && !loadError && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {KANBAN_COLS.map(col => {
           const colApps = filtered.filter(a => a.stage === col)
           return (
@@ -150,7 +160,7 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
                 <span aria-hidden="true" className="bg-[#1a4fa0] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{colApps.length}</span>
               </div>
               {colApps.length === 0
-                ? <p className="text-xs text-gray-600 text-center py-6">No candidates</p>
+                ? <p className="text-xs text-gray-600 text-center py-2 sm:py-6">No candidates</p>
                 : colApps.map(a => (
                   <button key={`${a.jobId}:${a.applicantId}`} data-card={`${a.jobId}:${a.applicantId}`}
                     onClick={() => openModal(a)}
@@ -173,7 +183,7 @@ export function EmpApplicantsScreen({ user, initialJobId }: { user: User; initia
             </section>
           )
         })}
-      </div>
+      </div>}
 
       {/* Modal */}
       {modal && (

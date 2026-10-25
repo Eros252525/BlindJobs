@@ -1,0 +1,12 @@
+{
+  "title": "Blind Jobs",
+  "description": "A job portal for partially, legally and totally blind job seekers in the Philippines, and the employers who hire them.",
+  "language": "en",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

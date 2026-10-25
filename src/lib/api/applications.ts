@@ -81,17 +81,17 @@ export async function getApplicationStage(applicantId: string, jobId: string): P
   return (await getApplication(jobId, applicantId))?.stage ?? null
 }
 
+// Every job, and every applicant's profile, fetched at once: one after another
+// took over four seconds for an employer with 17 jobs.
 export async function getEmployerApplicants(employerId: string) {
   const empList = await kvGet(`employer_jobs:${employerId}`) || { ids: [] }
-  const result: any[] = []
-  for (const jobId of empList.ids) {
-    const job = await kvGet(`job:${jobId}`)
-    for (const app of await getJobApplications(jobId)) {
-      const profile = await kvGet(`applicant_profile:${app.applicantId}`)
-      result.push({ ...app, profile: profile && normalizeProfile(profile), jobTitle: job?.jobTitle || jobId, job })
-    }
-  }
-  return result
+  const perJob = await Promise.all(empList.ids.map(async (jobId: string) => {
+    const [job, apps] = await Promise.all([kvGet(`job:${jobId}`), getJobApplications(jobId)])
+    return apps.map(app => ({ app, job, jobId }))
+  }))
+  const entries = perJob.flat()
+  const profiles = await Promise.all(entries.map(e => kvGet(`applicant_profile:${e.app.applicantId}`)))
+  return entries.map((e, i) => ({ ...e.app, profile: profiles[i] && normalizeProfile(profiles[i]), jobTitle: e.job?.jobTitle || e.jobId, job: e.job }))
 }
 
 export async function updateStage(jobId: string, applicantId: string, stage: string) {

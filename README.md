@@ -17,6 +17,7 @@ npm run build      # production build into dist/
 ```
 blindss/
 ├── index.html                  Page shell React mounts into
+├── site.json                   Page description, social title, and whether search engines may index
 ├── public/                     Static files served as-is
 │   ├── images/logo.jpg
 │   ├── icons/                  App icons (192, 512)
@@ -73,6 +74,7 @@ blindss/
 │   │   │   ├── job-fit.ts            The 0–100 job-fit score, its reasons, suggestions and ranking
 │   │   │   ├── skills.ts             Skills to search while typing, and recommended skills from job posts
 │   │   │   └── work-categories.ts    Kinds of work a job can be tagged with
+│   │   ├── job-search.ts       Job search in plain English or Filipino: filters + BM25 ranking
 │   │   ├── documents/
 │   │   │   ├── legal.ts              Privacy Notice and Terms text, their versions, and consent
 │   │   │   └── accessibility-statement.ts  The Accessibility page: WCAG 2.2 criteria, W3C's words, how we meet each
@@ -129,6 +131,7 @@ blindss/
 | The Accessibility page | `src/lib/documents/accessibility-statement.ts` (W3C's quoted words are never reworded) |
 | Who gets told about a new job | `src/lib/jobs/matching.ts` |
 | How the job-fit score is worked out, or its weights | `src/lib/jobs/job-fit.ts` |
+| Words the job search understands (synonyms, Filipino, places) | `src/lib/job-search.ts` |
 | Add a kind of work | `src/lib/jobs/work-categories.ts` |
 | A Filipino translation | `src/lib/i18n/fil.ts` (then run `python scripts/i18n-keys.py src src/lib/i18n/fil.ts`) |
 | A page's address (`/jobs`, …) | `src/lib/routes.ts` |

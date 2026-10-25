@@ -3,6 +3,7 @@ import { t } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { categoryById } from '@/lib/jobs/work-categories'
 import { rankJobs, suggestJobs, type JobFit } from '@/lib/jobs/job-fit'
+import { searchJobs } from '@/lib/job-search'
 import { jobSkillList, skillMatches } from '@/lib/jobs/matching'
 import { jobClosedLabel, jobIsOpen } from '@/lib/jobs/job-post'
 import { formatSalary, fullDateTime, timeAgo } from '@/lib/format'
@@ -62,10 +63,11 @@ export function JobsScreen({ user, initialJobId, onGoToProfile, onGoToProfileFie
   const ranked = rankJobs(jobs, profile)
   const suggestions = suggestJobs(jobs.filter(isOpen), profile)
   const suggestedIds = new Set(suggestions.map(s => s.job.id))
-  const matchesSearch = (j: Job) =>
-    !search || j.jobTitle?.toLowerCase().includes(search.toLowerCase()) || j.companyName?.toLowerCase().includes(search.toLowerCase())
-  const suggestedList = suggestions.filter(s => matchesSearch(s.job))
-  const otherList: { job: Job; fit: JobFit | null }[] = ranked.filter(r => !suggestedIds.has(r.job.id) && matchesSearch(r.job))
+  // A search is read as plain English or Filipino (see job-search.ts); its results
+  // replace the two groups with one list, best match first
+  const result = search.trim() ? searchJobs(search, ranked) : null
+  const suggestedList = result ? [] : suggestions
+  const otherList: { job: Job; fit: JobFit | null }[] = result ? result.hits : ranked.filter(r => !suggestedIds.has(r.job.id))
   const total = suggestedList.length + otherList.length
 
   // One list, a page at a time: the suggested jobs first, then the other jobs on the
@@ -81,7 +83,7 @@ export function JobsScreen({ user, initialJobId, onGoToProfile, onGoToProfileFie
   const first = (page - 1) * PAGE_SIZE
   const onPage = entries.slice(first, first + PAGE_SIZE)
   const groupOnPage = (g: Entry['group']) => onPage.filter(e => e.group === g)
-  const otherHeading = suggestedList.length ? t('Other jobs') : t('All jobs')
+  const otherHeading = result ? t('Search results') : suggestedList.length ? t('Other jobs') : t('All jobs')
 
   // Moving to another page puts focus on its first job, for keyboard and screen reader users
   const goToPage = (n: number) => {
@@ -187,12 +189,24 @@ export function JobsScreen({ user, initialJobId, onGoToProfile, onGoToProfileFie
           <h1 className="text-base font-bold text-[#1a7a3c] mb-3">{t('Job Listings PH')}</h1>
           <div className="flex items-center border border-gray-500 rounded-md px-3 py-2 gap-2 bg-white">
             <span aria-hidden="true" className="text-gray-600 text-sm">🔍</span>
-            <input className="flex-1 text-sm outline-none placeholder-gray-500" type="search" aria-label={t('Search jobs by title or company')}
-              placeholder={t('Search jobs...')} value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="flex-1 text-sm outline-none placeholder-gray-500" type="search" aria-label={t('Search jobs in your own words')}
+              aria-describedby="job-search-hint" placeholder={t('e.g. remote call center job in QC')} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          {/* Shows how the search was understood, so a wrong guess can be seen and reworded */}
+          <p id="job-search-hint" className="mt-2 text-sm text-gray-700">
+            {result?.summary
+              ? <>{t('Searching for:')} <span className="font-semibold text-gray-900">{result.summary}</span></>
+              : t('In English or Filipino: kind of work, city, remote, salary.')}
+          </p>
         </div>
         <div className="px-4 pb-24 flex-1 md:overflow-y-auto md:min-h-0">
-          <p role="status" className="sr-only">{search ? t(total === 1 ? '{n} job found' : '{n} jobs found', { n: total }) : ''}</p>
+          <p role="status" className="sr-only">
+            {result
+              ? result.summary
+                ? t(total === 1 ? '{n} job found for {query}' : '{n} jobs found for {query}', { n: total, query: result.summary })
+                : t(total === 1 ? '{n} job found' : '{n} jobs found', { n: total })
+              : ''}
+          </p>
           {search && (
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-gray-800">{t('{n} found', { n: total })}</p>
@@ -209,8 +223,8 @@ export function JobsScreen({ user, initialJobId, onGoToProfile, onGoToProfileFie
             </div>
           )}
 
-          {hasSkills && suggestedList.length === 0 && page === 1 && (
-            <p className="text-xs text-gray-600 py-2 mb-2">{search ? t('No suggested job matches your search.') : t('No open job fits your skills yet.')}</p>
+          {!result && hasSkills && suggestedList.length === 0 && page === 1 && (
+            <p className="text-xs text-gray-600 py-2 mb-2">{t('No open job fits your skills yet.')}</p>
           )}
 
           {groupOnPage('suggested').length > 0 && (
@@ -229,7 +243,7 @@ export function JobsScreen({ user, initialJobId, onGoToProfile, onGoToProfileFie
           )}
 
           {entries.length === 0 && (
-            <p className="text-xs text-gray-600 py-2">{search ? t('No jobs match your search.') : t('No jobs posted yet.')}</p>
+            <p className="text-xs text-gray-600 py-2">{search ? t('No jobs match your search. Try fewer words, or leave out the city or salary.') : t('No jobs posted yet.')}</p>
           )}
 
           {pages > 1 && (
