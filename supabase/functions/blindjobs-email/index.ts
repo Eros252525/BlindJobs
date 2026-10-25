@@ -32,11 +32,13 @@ const RESEND_SECONDS = 60
 const ALERT_SECONDS = 60
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-const FROM = Deno.env.get('GMAIL_USER')!
+// Spaces removed: Google shows app passwords as "abcd efgh ijkl mnop", and a pasted
+// secret easily carries a stray space or line break
+const FROM = (Deno.env.get('GMAIL_USER') || '').replace(/\s/g, '')
 // Supabase blocks ports 25 and 587 for outgoing mail; 465 (SSL) is allowed
 const mailer = nodemailer.createTransport({
   host: 'smtp.gmail.com', port: 465, secure: true,
-  auth: { user: FROM, pass: Deno.env.get('GMAIL_APP_PASSWORD')! },
+  auth: { user: FROM, pass: (Deno.env.get('GMAIL_APP_PASSWORD') || '').replace(/\s/g, '') },
 })
 
 const CORS = {
