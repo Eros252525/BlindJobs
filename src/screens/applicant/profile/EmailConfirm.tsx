@@ -61,6 +61,8 @@ export function EmailConfirm({ userId, email, sendNow, onConfirmed }: {
       await api.updateProfile(userId, { emailVerified: true })
       // the server's "this address was proved" mark is meant for registering employers; not needed here
       await api.clearEmailVerified(email).catch(() => {})
+      // first confirmed Gmail only; the server sends it once per account
+      api.sendWelcome(userId)
       toast(t('{email} is confirmed. Codes for a forgotten password can be sent to it.', { email }), 'success')
       onConfirmed()
     } catch (e: any) { setError(e.message); document.getElementById('ec-code')?.focus() }

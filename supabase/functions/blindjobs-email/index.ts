@@ -1,5 +1,5 @@
-// Blind Jobs email: proves a Gmail address is real with a 6-digit code, and tells
-// people by email when their account is signed in to.
+// Blind Jobs email: proves a Gmail address is real with a 6-digit code, welcomes new
+// accounts, and tells people by email when their account is signed in to.
 //
 // Runs on Supabase (Deno). It sends through a Gmail account made for Blind Jobs,
 // using a Google "app password". Secrets, set once with `supabase secrets set`:
@@ -8,12 +8,16 @@
 //   CODE_SECRET         any long random text; codes are stored only as HMACs keyed by it
 //   SEMAPHORE_API_KEY   (optional) Semaphore SMS API key, for password-reset codes by text
 //                       message to applicants' Philippine mobile numbers (semaphore.co)
+//   SITE_URL            (optional) the app's address, linked in the welcome email
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase itself.
 //
 // Actions (POST JSON with an `action` field):
 //   send-code    { email }        emails a code, before an account is created
 //   verify-code  { email, code }  checks it; on success marks the address as confirmed
-//   login-alert  { email }        emails "your account was just signed in to"
+//   login-alert  { userId }       emails "your account was just signed in to"
+//   welcome      { userId }       emails "your account is ready", once per account
+//                (both go only to the account's own address: an employer's Gmail, or an
+//                applicant's Gmail once they confirmed it with a code)
 //   send-reset   { role, login, channel: 'sms' | 'email', contact }
 //                texts or emails a password-reset code, if `contact` is the mobile
 //                number or email saved on the account `login` (username or email)
@@ -131,13 +135,29 @@ async function verifyCode(email: string, code: unknown) {
   await put(`email_verified:${email}`, { verifiedAt: new Date().toISOString() })
 }
 
-async function loginAlert(rawEmail: unknown, req: Request) {
-  const email = String(rawEmail || '').trim().toLowerCase()
-  // Only for real accounts, and at most once a minute, so this cannot be used to flood an inbox
-  if (!email || !(await get(`user_by_email:${email}`))) throw new Refusal('No account uses this address.', 404)
-  const last = await get(`login_alert:${email}`)
+/**
+ * The account `userId` and the address its emails go to, or null when it has none:
+ * an employer's Gmail, or an applicant's added Gmail once confirmed with a code.
+ */
+async function accountAddress(userId: unknown) {
+  const id = String(userId || '')
+  const user = id && await get(`user:${id}`)
+  if (!user) return null
+  if (user.email) return { user, email: String(user.email).trim().toLowerCase() }
+  const profile = user.role === 'applicant' ? await get(`applicant_profile:${user.id}`) : null
+  const email = profile?.emailVerified && profile.email ? String(profile.email).trim().toLowerCase() : ''
+  return email ? { user, email } : null
+}
+
+async function loginAlert(userId: unknown, req: Request) {
+  // Only to the account's own address, and at most once a minute, so this cannot be used to flood an inbox
+  const account = await accountAddress(userId)
+  if (!account) return
+  const { email } = account
+  const key = `login_alert:${account.user.id}`
+  const last = await get(key)
   if (last && Date.now() - last.sentAt < ALERT_SECONDS * 1000) return
-  await put(`login_alert:${email}`, { sentAt: Date.now() })
+  await put(key, { sentAt: Date.now() })
 
   const when = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'full', timeStyle: 'short' })
   const device = describeDevice(req.headers.get('user-agent') || '')
@@ -150,6 +170,30 @@ async function loginAlert(rawEmail: unknown, req: Request) {
       `<strong>When:</strong> ${when} (Philippine time)<br><strong>Device:</strong> ${device}`,
       'If this was you, there is nothing to do.',
       'If it was not you, reply to this email straight away so we can help you secure your account.',
+    ]),
+  })
+}
+
+async function welcome(userId: unknown) {
+  // Once per account, ever, so asking again sends nothing
+  const account = await accountAddress(userId)
+  if (!account) return
+  const { user, email } = account
+  const key = `welcome_sent:${user.id}`
+  if (await get(key)) return
+  await put(key, { sentAt: Date.now() })
+
+  const signIn = user.email || user.username
+  const site = Deno.env.get('SITE_URL') || ''
+  await mailer.sendMail({
+    from: `Blind Jobs <${FROM}>`, to: email,
+    subject: 'Welcome to Blind Jobs',
+    text: `Welcome to Blind Jobs. Your account is ready.\n\nYou sign in with: ${signIn}${site ? `\nSign in at: ${site}` : ''}\n\nCodes for a forgotten password, and an alert each time your account is signed in to, will be sent to this address.\n\nIf you did not make this account, reply to this email and we will help.`,
+    html: page([
+      'Welcome to Blind Jobs. Your account is ready.',
+      `<strong>You sign in with:</strong> ${signIn}${site ? `<br><strong>Sign in at:</strong> <a href="${site}">${site}</a>` : ''}`,
+      'Codes for a forgotten password, and an alert each time your account is signed in to, will be sent to this address.',
+      'If you did not make this account, reply to this email and we will help.',
     ]),
   })
 }
@@ -277,7 +321,8 @@ Deno.serve(async (req) => {
     switch (body.action) {
       case 'send-code': await sendCode(gmail(body.email)); break
       case 'verify-code': await verifyCode(gmail(body.email), body.code); break
-      case 'login-alert': await loginAlert(body.email, req); break
+      case 'login-alert': await loginAlert(body.userId, req); break
+      case 'welcome': await welcome(body.userId); break
       case 'send-reset': await sendReset(body); break
       case 'reset-password': await resetPassword(body); break
       default: throw new Refusal('Unknown action.')

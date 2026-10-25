@@ -1,5 +1,5 @@
 // Emails sent by the blindjobs-email Edge Function (supabase/functions/blindjobs-email):
-// the code that proves a Gmail address is real, and the new sign-in alert.
+// the code that proves a Gmail address is real, the welcome email, and the new sign-in alert.
 // The Gmail password and the codes stay on the server; the browser only asks.
 import { t } from '@/lib/i18n'
 import { kvDelete, supabase } from './client'
@@ -32,9 +32,20 @@ export const verifyEmailCode = (email: string, code: string) => call('verify-cod
 /** Removes the server's "this address was proved" mark once a profile email is confirmed with it. */
 export const clearEmailVerified = (email: string) => kvDelete(`email_verified:${email}`)
 
-/** Emails "your account was just signed in to". Never blocks signing in: a failure is only logged. */
-export function sendLoginAlert(email: string) {
-  call('login-alert', { email }).catch(e => console.warn('Sign-in alert not sent:', e.message))
+/**
+ * Emails "your account was just signed in to", to the account's email or its confirmed
+ * Gmail (the server decides). Never blocks signing in: a failure is only logged.
+ */
+export function sendLoginAlert(userId: string) {
+  call('login-alert', { userId }).catch(e => console.warn('Sign-in alert not sent:', e.message))
+}
+
+/**
+ * Emails "your account is ready", once per account: an employer when the account is
+ * made, an applicant when they confirm a Gmail. A failure is only logged.
+ */
+export function sendWelcome(userId: string) {
+  call('welcome', { userId }).catch(e => console.warn('Welcome email not sent:', e.message))
 }
 
 // ── Forgot password ───────────────────────────────────────────────────────────

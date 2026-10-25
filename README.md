@@ -22,17 +22,19 @@ blindss/
 │   ├── icons/                  App icons (192, 512)
 │   └── manifest.webmanifest
 ├── src/
-│   ├── main.tsx                Entry point; also switches optional themes on
+│   ├── main.tsx                Entry point; switches optional themes on, catches screen crashes
 │   ├── App.tsx                 Which screen shows, who is signed in, navigation, the address bar
 │   ├── types.ts                Shared data shapes (User, Job, ApplicantProfile, …)
 │   ├── constants.ts            Screen lists, page titles, kanban columns
 │   │
 │   ├── screens/                One file per page
-│   │   ├── auth/               Welcome guide, Sign in, Register (applicant, employer)
+│   │   ├── auth/               Language choice, welcome guide, Sign in, Forgot password,
+│   │   │   │                   Register (applicant, employer)
 │   │   │   └── register/       Applicant registration, one file per step (account, work profile,
 │   │   │                       finish), plus the step list and the frame around them
-│   │   ├── applicant/          Dashboard, Profile (resume), Jobs
-│   │   │   ├── profile/        The read-only resume (the edit form is ProfileScreen.tsx)
+│   │   ├── applicant/          Dashboard (Home), Profile (resume), Jobs
+│   │   │   └── profile/        The read-only resume and the Gmail confirmation box
+│   │   │                       (the edit form is ProfileScreen.tsx)
 │   │   ├── employer/           Dashboard, Post a Job, Applicants board
 │   │   │   └── applicants/     What an employer reviews in the applicant dialog: job fit,
 │   │   │                       accommodations
@@ -40,24 +42,24 @@ blindss/
 │   │       └── messages/       Folder list, conversation list, one conversation
 │   │
 │   ├── components/             Pieces used by several screens
-│   │   ├── a11y/               Display + Screen Reader buttons, Display settings dialog, braille
-│   │   ├── auth/               Signed-out page frame + screen-reader/braille panel
+│   │   ├── a11y/               Language, Display and Screen Reader buttons, Display settings dialog, braille
+│   │   ├── auth/               Signed-out page frame, screen-reader/braille panel, email code form
 │   │   ├── legal/              Privacy Notice / Terms dialog, consent boxes at registration
 │   │   ├── nav/                Top navbar, notification bell, account menu
 │   │   ├── toast/              Pop-up messages ("Resume saved")
-│   │   └── ui/                 Form field, password box, error message, dialog, spinner, page card,
-│   │                           progress and score bars, skill picker, profile photo
+│   │   └── ui/                 Form field, password and Gmail boxes, error message, dialog, spinner,
+│   │                           page card, progress bars, skill picker, profile photo, and the
+│   │                           "Something went wrong" screen shown if a page crashes
 │   │
 │   ├── lib/                    Logic with no UI
 │   │   ├── a11y/
 │   │   │   ├── display-settings.ts   Text size, font, colours, spacing (saved per device)
 │   │   │   ├── screen-reader.ts      Built-in reader (F2 toggles it)
 │   │   │   └── braille.ts            Braille dot patterns for letters
-│   │   ├── assessment/
-│   │   │   ├── work-categories.ts    Kinds of work a job can be tagged with
 │   │   ├── api/                Everything that talks to Supabase; screens import '@/lib/api'
 │   │   │   ├── client.ts             The connection, the key → JSON helpers, the storage layout
 │   │   │   ├── auth.ts               Register and sign in
+│   │   │   ├── email.ts              Email codes (register, confirm a Gmail), password reset, sign-in alerts
 │   │   │   ├── profile.ts            Applicant profile
 │   │   │   ├── health.ts             Deletes health survey answers left by earlier versions
 │   │   │   ├── jobs.ts               Job posts
@@ -69,14 +71,22 @@ blindss/
 │   │   │   ├── matching.ts           When a job matches an applicant (skills, past work, location, visual category)
 │   │   │   ├── job-post.ts           What a job post needs before it is published (description, location vs work mode)
 │   │   │   ├── job-fit.ts            The 0–100 job-fit score, its reasons, suggestions and ranking
-│   │   │   └── skills.ts             Skills to search while typing, and recommended skills from job posts
+│   │   │   ├── skills.ts             Skills to search while typing, and recommended skills from job posts
+│   │   │   └── work-categories.ts    Kinds of work a job can be tagged with
 │   │   ├── documents/
 │   │   │   ├── legal.ts              Privacy Notice and Terms text, their versions, and consent
 │   │   │   └── accessibility-statement.ts  The Accessibility page: WCAG 2.2 criteria, W3C's words, how we meet each
+│   │   ├── i18n/
+│   │   │   ├── index.ts              English and Filipino: t('…'), the chosen language, useLang()
+│   │   │   └── fil.ts                The Filipino for every English text in the app
 │   │   ├── session.ts          Signed-in user and open screen, kept for the tab so a reload returns there
 │   │   ├── routes.ts           Each screen's address (/login, /jobs, /profile, …) and who may open it
 │   │   ├── resume.ts           Resume choices (education levels, assistive tech, …)
 │   │   ├── photo.ts            Shrinks a chosen profile photo to a small square JPEG
+│   │   ├── phone.ts            Philippine mobile numbers: checking, cleaning up typing, +63 format
+│   │   ├── gmail.ts            Gmail address rules (employers, and applicants' optional email)
+│   │   ├── username.ts         Applicant username rules
+│   │   ├── open-conversation.ts  Which conversation is on screen, so the bell does not count or announce it
 │   │   ├── validation.ts       Required-field checks for forms, the 50-character name limit
 │   │   ├── format.ts           Names, dates (one style: "September 18, 2026"), salaries ("₱17,000–21,000"), stage colours
 │   │   └── toast.ts            Show a toast from anywhere
@@ -89,12 +99,16 @@ blindss/
 │       ├── components.css      .input, .btn-primary, .field-label
 │       ├── nav.css             Navbar
 │       ├── auth.css            Signed-out screens + the blue braille backdrop
-│       ├── a11y-toggle.css     Screen Reader button (grey off, green on)
+│       ├── a11y-toggle.css     Bottom-right buttons: language, Display, Screen Reader (icons only on
+│       │                       phones and at large text sizes)
 │       ├── toast.css           Pop-up messages
 │       ├── readability.css     Minimum text sizes and contrast for low vision
 │       └── themes.css          Display settings: fonts, dark/high-contrast themes, spacing
 │
-├── supabase/functions/server/  Edge function (backend, in progress)
+├── scripts/i18n-keys.py        Lists English text that has no Filipino translation yet
+├── supabase/functions/
+│   ├── blindjobs-email/        Email codes, password reset (email or text message), sign-in alerts
+│   └── server/                 Edge function (backend, in progress)
 └── utils/supabase/info.tsx     Supabase project ID (auto-generated, do not edit)
 ```
 
@@ -115,7 +129,9 @@ blindss/
 | The Accessibility page | `src/lib/documents/accessibility-statement.ts` (W3C's quoted words are never reworded) |
 | Who gets told about a new job | `src/lib/jobs/matching.ts` |
 | How the job-fit score is worked out, or its weights | `src/lib/jobs/job-fit.ts` |
-| Add a kind of work | `src/lib/assessment/work-categories.ts` |
+| Add a kind of work | `src/lib/jobs/work-categories.ts` |
+| A Filipino translation | `src/lib/i18n/fil.ts` (then run `python scripts/i18n-keys.py src src/lib/i18n/fil.ts`) |
+| A page's address (`/jobs`, …) | `src/lib/routes.ts` |
 | A step of applicant registration | `src/screens/auth/register/` (order and names in `steps.ts`) |
 
 ## From registration to a job
@@ -191,7 +207,10 @@ saved unconfirmed and used for password resets only after the applicant types ba
 6-digit code emailed to it (`EmailConfirm`). Home and Profile remind them until then. Employers register with a Gmail address
 (`src/lib/gmail.ts` checks Google's username rules); to prove it is real, registration
 emails it a 6-digit code that must be typed back before the account is created. Every
-sign-in to an account that has an email sends it a short alert.
+sign-in to an account that has an email (an employer's Gmail, or an applicant's once
+confirmed) sends it a short alert. A welcome email ("your account is ready", with what
+to sign in with) goes once per account: to an employer when the account is made, to an
+applicant when they first confirm a Gmail.
 
 A failed sign-in always says "Email, username or password is incorrect.", so the page
 never tells anyone whether an account exists.
@@ -219,7 +238,8 @@ Limits: Gmail sends about 500 emails a day from one account. A code works for 10
 and 5 tries; a new one can be asked for once a minute. A sign-in alert goes out at most
 once a minute per account. Keys used: `email_code:<email>` (the code as an HMAC, never the
 code itself), `email_verified:<email>` (deleted once the account is made),
-`login_alert:<email>`.
+`login_alert:<userId>`, `welcome_sent:<userId>`. Optionally set `SITE_URL` (the Vercel
+address) as a secret too, so the welcome email links to the app.
 
 ## Forgot password
 

@@ -6,7 +6,7 @@ import { nameProblem, passwordProblem } from '@/lib/validation'
 import { mobileProblem, phMobile } from '@/lib/phone'
 import { t } from '@/lib/i18n'
 import { kvDelete, kvGet, kvSet } from './client'
-import { sendLoginAlert } from './email'
+import { sendLoginAlert, sendWelcome } from './email'
 
 async function hashPassword(password: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password))
@@ -120,6 +120,7 @@ export async function register(body: Record<string, any>) {
   await kvSet(`user_by_email:${email}`, { userId: id })
   await kvDelete(`email_verified:${email}`)
   await kvSet(`employer_profile:${id}`, { userId: id, companyName: companyName || email, email })
+  sendWelcome(id)
   return { id, role, email, name: companyName || email }
 }
 
@@ -136,14 +137,15 @@ export async function login(emailOrUsername: string, password: string, role: str
       ? t('This account is registered as an Employer. Select "Employer" and try again.')
       : t('This account is registered as an Applicant. Select "Applicant" and try again.'))
   }
-  // Only accounts with an email get the sign-in alert
-  if (user.email) sendLoginAlert(user.email)
   // `email` on the signed-in user is what they sign in with: the email, or the username
   const signIn: string = user.email || user.username
   if (role === 'applicant') {
     const p = await kvGet(`applicant_profile:${user.id}`)
+    // Only accounts with an email get the sign-in alert: an applicant's once confirmed
+    if (p?.email && p.emailVerified) sendLoginAlert(user.id)
     return { id: user.id, role, email: signIn, name: p ? `${p.firstName} ${p.lastName}`.trim() || signIn : signIn }
   } else {
+    if (user.email) sendLoginAlert(user.id)
     const p = await kvGet(`employer_profile:${user.id}`)
     return { id: user.id, role, email: signIn, name: p?.companyName || signIn }
   }
