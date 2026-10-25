@@ -7,7 +7,7 @@
  * Credentials). Not a secret. The email function needs the same value as its
  * GOOGLE_CLIENT_ID secret. While empty, the button is not shown.
  */
-export const GOOGLE_CLIENT_ID = ''
+export const GOOGLE_CLIENT_ID = '712486402159-albqrb4gora9ia9p0medpqe14721io2o.apps.googleusercontent.com'
 
 let loading: Promise<any> | null = null
 
