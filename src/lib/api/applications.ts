@@ -3,6 +3,7 @@ import { incompleteProfileMessage, requiredProfileFields } from '@/lib/resume'
 import { missingFields } from '@/lib/validation'
 import type { Job, MyApplication } from '@/types'
 import { kvGet, kvList, kvSet } from './client'
+import { normalizeProfile } from './profile'
 import { isOpen } from './jobs'
 import { createConversation, getConversations, sendMessage } from './messages'
 import { notifyNewApplication, notifyStageChange } from './notifications'
@@ -30,7 +31,7 @@ export async function applyToJob(jobId: string, applicantId: string) {
   if (await getApplication(jobId, applicantId)) throw new Error('Already applied')
   // The employer is sent the profile, so its required fields must be filled in.
   // Checked here as well as on the Jobs screen, so no way of applying gets round it.
-  const missing = missingFields(requiredProfileFields((await kvGet(`applicant_profile:${applicantId}`)) || {}))
+  const missing = missingFields(requiredProfileFields(normalizeProfile(await kvGet(`applicant_profile:${applicantId}`))))
   if (missing.length) throw new Error(incompleteProfileMessage(missing))
   const application = { applicantId, jobId, stage: 'New', appliedAt: new Date().toISOString() }
   await kvSet(`application:${jobId}:${applicantId}`, application)
@@ -86,7 +87,8 @@ export async function getEmployerApplicants(employerId: string) {
   for (const jobId of empList.ids) {
     const job = await kvGet(`job:${jobId}`)
     for (const app of await getJobApplications(jobId)) {
-      result.push({ ...app, profile: await kvGet(`applicant_profile:${app.applicantId}`), jobTitle: job?.jobTitle || jobId, job })
+      const profile = await kvGet(`applicant_profile:${app.applicantId}`)
+      result.push({ ...app, profile: profile && normalizeProfile(profile), jobTitle: job?.jobTitle || jobId, job })
     }
   }
   return result

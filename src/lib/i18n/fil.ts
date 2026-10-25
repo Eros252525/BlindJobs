@@ -573,4 +573,8 @@ export const FIL: Record<string, string> = {
   "{email} is confirmed. Codes for a forgotten password can be sent to it.": "Nakumpirma na ang {email}. Puwede nang ipadala rito ang mga code para sa nakalimutang password.",
   "Leave it empty if you have no email. If you add one, we email you a code to confirm it after you sign in; then it can also reset a forgotten password. You still sign in with your username.": "Iwanang blangko kung wala kang email. Kung maglalagay ka, mag-e-email kami ng code para kumpirmahin ito pagka-sign in mo; saka ito magagamit din para mag-reset ng nakalimutang password. Username pa rin ang gamit mo sa pag-sign in.",
   "Confirm my Gmail": "Kumpirmahin ang aking Gmail",
+  "Something went wrong on this page": "May nangyaring mali sa page na ito",
+  "Your work that was already saved is safe. Reload the page to try again. If it keeps happening, go back to Home.": "Ligtas ang mga na-save mo na. I-reload ang page para subukan ulit. Kung patuloy itong mangyari, bumalik sa Home.",
+  "Reload the page": "I-reload ang page",
+  "Go to Home": "Pumunta sa Home",
 }

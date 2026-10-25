@@ -1,6 +1,6 @@
 // Skills an applicant can search for while typing. A starting vocabulary, not a
 // limit: anyone may add a skill that is not here. Words for work blind and
-// low-vision people do, as named in the kinds of work in assessment/work-categories.ts,
+// low-vision people do, as named in the kinds of work in work-categories.ts,
 // plus general office and digital skills.
 import type { Job } from '@/types'
 import { SKILL_CHOICES } from '@/lib/resume'

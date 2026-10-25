@@ -85,9 +85,10 @@
   font-weight: 800;
 }
 
-/* phones: the three buttons shrink to their icons on one row, so they cover as
-   little of the page as possible. The words stay for screen readers (each button
-   also has an aria-label), and the key hint goes. */
+/* phones, and text at 150% or more: the three buttons shrink to their icons on one
+   row, so they cover as little of the page as possible (at 200% the full buttons hid
+   whole lines of text). The words stay for screen readers (each button also has an
+   aria-label), and the key hint goes. */
 @media (max-width: 640px) {
   .a11y-toggle-key { display: none; }
   .a11y-label {
@@ -95,6 +96,14 @@
     overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   }
   .a11y-display-btn, .a11y-toggle { min-height: 2.75rem; padding: 0.3rem 0.5rem; gap: 0.35rem; }
+}
+:root:is([data-size='150'], [data-size='175'], [data-size='200']) .a11y-toggle-key { display: none; }
+:root:is([data-size='150'], [data-size='175'], [data-size='200']) .a11y-label {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+:root:is([data-size='150'], [data-size='175'], [data-size='200']) :is(.a11y-display-btn, .a11y-toggle) {
+  padding: 0.3rem 0.5rem; gap: 0.35rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

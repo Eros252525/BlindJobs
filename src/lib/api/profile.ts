@@ -1,14 +1,36 @@
 // The applicant's profile.
 import { mobileProblem, phMobile } from '@/lib/phone'
 import { emailProblem, nameProblem } from '@/lib/validation'
+import type { ApplicantProfile } from '@/types'
 import { kvGet, kvSet } from './client'
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
+// Lists saved as text, text saved as a number, missing fields: profiles saved by
+// older versions (or edited by hand) come in many shapes. Every profile is put in
+// the one shape the screens expect when it is read, so a stray value can never
+// crash a page.
+const asText = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v))
+const asList = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()) : typeof v === 'string' && v.trim() ? v.split(',').map(s => s.trim()).filter(Boolean) : []
+
+export function normalizeProfile(p: any): ApplicantProfile {
+  if (!p || typeof p !== 'object') return {}
+  const out: ApplicantProfile = { ...p }
+  for (const k of ['firstName', 'middleName', 'lastName', 'suffix', 'mobile', 'email', 'username', 'gender', 'disabilityType', 'location', 'about', 'educationLevel', 'school', 'trainings'] as const) {
+    if (k in p) out[k] = asText(p[k])
+  }
+  for (const k of ['skills', 'assistiveTech', 'workSetup', 'languages', 'accommodations'] as const) out[k] = asList(p[k])
+  out.experience = (Array.isArray(p.experience) ? p.experience : [])
+    .filter((x: any) => x && typeof x === 'object')
+    .map((x: any) => ({ title: asText(x.title), company: asText(x.company), period: asText(x.period) }))
+  return out
+}
+
 export async function getProfile(userId: string) {
   const p = await kvGet(`applicant_profile:${userId}`)
   if (!p) throw new Error('Not found')
-  return p
+  return normalizeProfile(p)
 }
 
 export async function updateProfile(userId: string, body: Record<string, any>) {

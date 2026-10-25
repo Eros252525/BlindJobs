@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { t } from '@/lib/i18n'
 
 // Focus moves into the dialog, Tab/Shift+Tab stay inside it, Escape closes it, and
@@ -36,12 +37,16 @@ export function ModalDialog({ labelledBy, onClose, returnFocusTo, wide = false, 
     }
   }, [returnFocusTo])
 
-  return (
+  // Drawn straight into <body>, not where it is used: the page area is its own stacking
+  // layer (isolation: isolate), so a dialog inside it would sit under the sticky menu
+  // bar and lose its top half, whatever its z-index.
+  return createPortal(
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={labelledBy}
         className={`bg-white rounded-xl shadow-2xl w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} max-h-[calc(100dvh-2rem)] overflow-y-auto`} onClick={e => e.stopPropagation()}>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -2,6 +2,7 @@
 import { jobMatch, type JobMatch } from '@/lib/jobs/matching'
 import type { ApplicantProfile, Job } from '@/types'
 import { kvGet, kvList, kvSet } from './client'
+import { normalizeProfile } from './profile'
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ function jobMatchNotice(job: Job, m: JobMatch): string {
 // Tells every applicant the new job suits (see jobMatch)
 export async function notifyJobMatches(job: Job) {
   try {
-    const profiles: ApplicantProfile[] = await kvList('applicant_profile:')
+    const profiles: ApplicantProfile[] = (await kvList('applicant_profile:')).map(normalizeProfile)
     const sent = await Promise.allSettled(profiles.map(profile => {
       const match = profile?.userId ? jobMatch(job, profile) : null
       return match ? pushNotification(profile.userId!, { type: 'job', jobId: job.id, text: jobMatchNotice(job, match) }) : null

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api } from '@/lib/api'
-import { WORK_CATEGORIES } from '@/lib/assessment/work-categories'
+import { WORK_CATEGORIES } from '@/lib/jobs/work-categories'
 import { jobPostProblem, needsLocation, workModeProblem } from '@/lib/jobs/job-post'
 import { toast } from '@/lib/toast'
 import { focusFirst, missingFields, missingMessage } from '@/lib/validation'

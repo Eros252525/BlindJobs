@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import './index.css'
 import { applyDisplaySettings, loadDisplaySettings } from './lib/a11y/display-settings'
 
@@ -9,6 +10,8 @@ applyDisplaySettings(loadDisplaySettings())
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 )

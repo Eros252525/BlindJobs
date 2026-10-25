@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { t } from '@/lib/i18n'
 import { api } from '@/lib/api'
-import { categoryById } from '@/lib/assessment/work-categories'
+import { categoryById } from '@/lib/jobs/work-categories'
 import { rankJobs, suggestJobs, type JobFit } from '@/lib/jobs/job-fit'
 import { jobSkillList, skillMatches } from '@/lib/jobs/matching'
 import { jobClosedLabel, jobIsOpen } from '@/lib/jobs/job-post'
