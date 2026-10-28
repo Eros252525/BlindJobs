@@ -109,7 +109,7 @@ blindss/
 │
 ├── scripts/i18n-keys.py        Lists English text that has no Filipino translation yet
 ├── supabase/functions/
-│   ├── blindjobs-email/        Email codes, password reset (email or text message), sign-in alerts
+│   ├── blindjobs-email/        Email codes, password reset by email, sign-in alerts
 │   └── server/                 Edge function (backend, in progress)
 └── utils/supabase/info.tsx     Supabase project ID (auto-generated, do not edit)
 ```
@@ -146,8 +146,7 @@ last one, so nothing is stored about someone who stops part-way.
    Philippine mobile number, an optional Gmail (many blind applicants have no email;
    partially and legally blind applicants often do), username, password (at least 8 characters);
    Privacy Notice and Terms, versions recorded on the account. The username is checked
-   for being free here. The mobile number is asked now because applying needs it and a
-   forgotten password is reset with a code texted to it.
+   for being free here. The mobile number is asked now because applying needs it.
 2. **Skills and work preferences.** Disability type, skills, last job, location, work setup,
    assistive technology, accommodations.
 3. **Create the account.** A summary, then everything is saved and the applicant is taken to
@@ -264,27 +263,20 @@ While `src/lib/google.ts` has none, the button is not shown.
 ## Forgot password
 
 "Forgot your password?" sits under the Password box on Sign in (`/forgot-password`).
-A 6-digit code is sent to what the account already has, then a new password is chosen:
+A 6-digit code is emailed, then a new password is chosen:
 
-- **Applicants:** by text message to the Philippine mobile number on their profile, or by
-  email if they added one (the email on the applicant profile is optional, because many
-  blind applicants have none; they still sign in with their username).
+- **Applicants:** to the email on their profile. That email is optional, because many
+  blind applicants have none; an applicant without one asks Blind Jobs for help.
 - **Employers:** to their Gmail.
 
-The person types the number or address themselves, and the page answers the same whether
-or not it matched, so it never reveals whether an account exists. The code works for 10
-minutes and 5 tries; one a minute. Key used: `reset_code:<userId>` (an HMAC, never the code).
+The person types the address themselves, and the page answers the same whether or not it
+matched, so it never reveals whether an account exists. The code works for 10 minutes and
+5 tries; one a minute. Key used: `reset_code:<userId>` (an HMAC, never the code).
 
-Both actions are in the same Edge Function (`send-reset`, `reset-password`). Text messages
-go through [Semaphore](https://semaphore.co), a Philippine SMS service (paid per message):
-make an account, copy its API key, then
-
-```
-supabase secrets set SEMAPHORE_API_KEY="<the key>"
-supabase functions deploy blindjobs-email
-```
-
-Without the key, codes by email still work and the page says text messages are not set up.
+Both actions are in the same Edge Function (`send-reset`, `reset-password`). Codes by text
+message were taken off the page on 2026-10-28. The function can still send them through
+[Semaphore](https://semaphore.co) when the `SEMAPHORE_API_KEY` secret is set, so they can
+come back by putting the choice back in `ForgotPasswordScreen.tsx`.
 
 ## Languages
 
