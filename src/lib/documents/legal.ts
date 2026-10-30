@@ -27,8 +27,8 @@ export interface LegalDoc { id: LegalDocId; title: string; version: string; effe
 const PRIVACY: LegalDoc = {
   id: 'privacy',
   title: 'Privacy Notice',
-  version: '2.0',
-  effective: 'October 24, 2026',
+  version: '2.1',
+  effective: 'October 30, 2026',
   summary: 'This notice explains what personal data Blind Jobs collects, why, who can see it, and your rights under the Data Privacy Act of 2012 (Republic Act No. 10173).',
   sections: [
     {
@@ -53,13 +53,20 @@ const PRIVACY: LegalDoc = {
       body: [
         'Your type of visual disability is information about your health. The Data Privacy Act treats health and education details as sensitive personal information, which we may process only with your consent.',
         'We ask for that consent when you register.',
+        'Answers to the health survey are health information too, which is why we do not collect them (see "The health survey").',
       ],
     },
     {
-      heading: 'The health survey has been removed',
+      heading: 'The health survey',
       body: [
-        'Earlier versions of Blind Jobs had an optional health survey (RAND-36). It was removed on October 24, 2026, and we no longer ask about your health beyond your type of visual disability.',
-        'Answers that earlier versions saved are deleted from our server the next time you open your dashboard. We do not use them for anything in the meantime.',
+        'On the Assessments page, applicants may answer the RAND 36-Item Health Survey, which asks how their health affects daily life. It is optional.',
+      ],
+      items: [
+        'You do not need it to apply for any job. Answering it or skipping it does not affect your applications, the jobs suggested to you, or how jobs are ranked for you.',
+        'It has its own agreement box, separate from the consent you gave at registration.',
+        'Your answers are scored on your own device and shown only to you. They are not sent to Blind Jobs and not saved, so no employer and nobody on our team can see them.',
+        'Your results stay only in your browser tab, until you sign out or close the tab. You can download a copy for yourself; that copy is yours to keep or delete.',
+        'Versions of Blind Jobs before October 23, 2026 saved survey answers on our server. We are deleting all of those copies. If one is still there when you next open the Assessments page, it is shown to you one last time and deleted at once.',
       ],
     },
     {
@@ -90,7 +97,7 @@ const PRIVACY: LegalDoc = {
       heading: 'Who can see your data',
       body: [],
       items: [
-        'An employer sees your full profile, including your disability type, contact details, the accommodations you would ask for, and your job-fit score for that job, only after you apply to one of that employer\'s jobs.',
+        'An employer sees your full profile, including your disability type, contact details, the accommodations you would ask for, and your job-fit score for that job, only after you apply to one of that employer\'s jobs. Health survey answers are never sent to us, so no employer can see them.',
         'Other applicants cannot see your profile.',
         'Job posts and company names are shown to all applicants.',
         'Your data is stored with Supabase, a cloud database service. Its servers may be outside the Philippines.',

@@ -65,7 +65,7 @@ export const ACCESSIBILITY: LegalDoc = {
         sc('2.1.4', 'Character Key Shortcuts', 'A', 'If a keyboard shortcut is implemented in content using only letter (including upper- and lower-case letters), punctuation, number, or symbol characters, then at least one of the following is true…',
           'F2 turns the built-in reader on or off. The only single-key shortcuts are 1 (read the page again) and 2 (mute the reader), and they work only straight after the reader has read a page, until any other key is pressed, and never while typing in a field.'),
         sc('2.2.1', 'Timing Adjustable', 'A', 'For each time limit that is set by the content, at least one of the following is true…',
-          'nothing is timed: no page, form or session has a time limit.'),
+          'nothing is timed. The health survey has no time limit and can be left and taken again.'),
         sc('2.4.1', 'Bypass Blocks', 'A', 'A mechanism is available to bypass blocks of content that are repeated on multiple web pages.',
           'a "Skip to main content" link is the first stop on every signed-in page.'),
         sc('2.4.2', 'Page Titled', 'A', 'Web pages have titles that describe topic or purpose.',

@@ -20,5 +20,5 @@ export const BTN_SECONDARY = 'min-h-11 px-5 bg-white border border-gray-500 text
 /** Classes for a step's <h1>, which takes focus when the step opens. */
 export const STEP_HEADING = 'text-2xl font-bold text-[#1a4fa0] focus:outline-none'
 
-/** The small line above a step's heading that says which step this is. */
+/** The small line above a step's heading that says which step or survey this is. */
 export const STEP_EYEBROW = 'text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1'

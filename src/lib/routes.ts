@@ -12,6 +12,7 @@ const PATHS: Record<Screen, string> = {
   'forgot-password': '/forgot-password',
   dashboard: '/dashboard',
   profile: '/profile',
+  assessments: '/assessments',
   jobs: '/jobs',
   messages: '/messages',
   'emp-dashboard': '/employer',

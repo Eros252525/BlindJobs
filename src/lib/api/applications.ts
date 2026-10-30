@@ -31,6 +31,7 @@ export async function applyToJob(jobId: string, applicantId: string) {
   if (await getApplication(jobId, applicantId)) throw new Error('Already applied')
   // The employer is sent the profile, so its required fields must be filled in.
   // Checked here as well as on the Jobs screen, so no way of applying gets round it.
+  // The health survey is never checked: it is optional and has nothing to do with applying.
   const missing = missingFields(requiredProfileFields(normalizeProfile(await kvGet(`applicant_profile:${applicantId}`))))
   if (missing.length) throw new Error(incompleteProfileMessage(missing))
   const application = { applicantId, jobId, stage: 'New', appliedAt: new Date().toISOString() }
