@@ -1,6 +1,6 @@
 /* ═══ toasts ═══
-   Bottom-left, stacked above the Screen Reader button on phones. They persist
-   until dismissed (WCAG 2.2.1), max three at a time. */
+   Bottom-left, stacked above the Screen Reader button on phones, max three at a
+   time. Errors stay until dismissed; the rest fade (see ToastContainer). */
 .toast-stack {
   position: fixed;
   left: 1rem;
@@ -33,6 +33,12 @@
   color: #fff;
   box-shadow: 0 12px 28px -10px rgb(0 0 0 / 0.45);
   animation: auth-rise 220ms var(--nav-ease-out) both;
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+/* fading out; 400ms is FADE_MS in ToastContainer */
+.toast.is-leaving {
+  opacity: 0;
+  transform: translateY(0.5rem);
 }
 .toast p { padding-top: 0.35rem; }
 .toast-close {
@@ -48,5 +54,5 @@
 .toast-close:hover { background: rgb(255 255 255 / 0.18); }
 
 @media (prefers-reduced-motion: reduce) {
-  .toast { animation: none; }
+  .toast { animation: none; transition: none; }
 }

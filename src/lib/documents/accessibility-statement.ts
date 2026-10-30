@@ -20,8 +20,8 @@ const sc = (num: string, title: string, level: 'A' | 'AA', wcag: string, ours: s
 export const ACCESSIBILITY: LegalDoc = {
   id: 'accessibility',
   title: 'Accessibility',
-  version: '1.0',
-  effective: 'October 14, 2026',
+  version: '1.1',
+  effective: 'October 30, 2026',
   summary: 'Blind Jobs is built for people who are blind or have low vision. We follow the Web Content Accessibility Guidelines (WCAG) 2.2 from the W3C, at Level AA. Below, each guideline we follow is given in W3C\'s own words, with how Blind Jobs meets it.',
   sections: [
     {
@@ -65,7 +65,7 @@ export const ACCESSIBILITY: LegalDoc = {
         sc('2.1.4', 'Character Key Shortcuts', 'A', 'If a keyboard shortcut is implemented in content using only letter (including upper- and lower-case letters), punctuation, number, or symbol characters, then at least one of the following is true…',
           'F2 turns the built-in reader on or off. The only single-key shortcuts are 1 (read the page again) and 2 (mute the reader), and they work only straight after the reader has read a page, until any other key is pressed, and never while typing in a field.'),
         sc('2.2.1', 'Timing Adjustable', 'A', 'For each time limit that is set by the content, at least one of the following is true…',
-          'nothing is timed: no page, form or session has a time limit.'),
+          'no page, form or session has a time limit. Short messages that pop up after an action, such as "Applied to …", fade after about 10 seconds, longer for long ones. Each is also read out, stays while the pointer or keyboard focus is on it, and can be closed sooner. Error messages stay until closed.'),
         sc('2.4.1', 'Bypass Blocks', 'A', 'A mechanism is available to bypass blocks of content that are repeated on multiple web pages.',
           'a "Skip to main content" link is the first stop on every signed-in page.'),
         sc('2.4.2', 'Page Titled', 'A', 'Web pages have titles that describe topic or purpose.',
