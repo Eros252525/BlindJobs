@@ -3,7 +3,7 @@
 // alert, password reset, and checking a Sign in with Google.
 // The Gmail password and the codes stay on the server; the browser only asks.
 import { t } from '@/lib/i18n'
-import type { GoogleSignUp, User } from '@/types'
+import type { GoogleSignUp, Role, User } from '@/types'
 import { kvDelete, supabase } from './client'
 
 const FUNCTION = 'blindjobs-email'
@@ -53,19 +53,18 @@ export function sendWelcome(userId: string) {
 
 // ── Forgot password ───────────────────────────────────────────────────────────
 
-export type ResetChannel = 'sms' | 'email'
-
 /**
- * Sends a 6-digit reset code by text message or email, if `contact` is the mobile
- * number or email saved on the account. The server answers the same either way,
- * so this never tells whether the account or the number exists.
+ * Emails a 6-digit reset code to `email`, if an account signs in with it or an applicant
+ * confirmed it on their profile. The server answers the same either way, so this never
+ * tells whether an account uses it. (The server can also text codes; nothing asks it to.)
  */
-export const sendResetCode = (role: string, login: string, channel: ResetChannel, contact: string) =>
-  call('send-reset', { role, login, channel, contact })
+export const sendResetCode = (email: string) => call('send-reset', { login: email, channel: 'email', contact: email })
 
-/** Sets a new password with the code from the text message or email. */
-export const resetPassword = (role: string, login: string, code: string, password: string) =>
-  call('reset-password', { role, login, code, password })
+/** Sets a new password with the emailed code; answers the account's type and what it signs in with. */
+export async function resetPassword(email: string, code: string, password: string): Promise<{ role: Role; login: string }> {
+  const data = await call('reset-password', { login: email, code, password })
+  return { role: data.role, login: data.login }
+}
 
 // ── Sign in with Google ───────────────────────────────────────────────────────
 

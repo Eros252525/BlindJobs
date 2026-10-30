@@ -273,13 +273,19 @@ While `src/lib/google.ts` has none, the button is not shown.
 ## Forgot password
 
 "Forgot your password?" sits under the Password box on Sign in (`/forgot-password`).
-A 6-digit code is emailed, then a new password is chosen:
+It is one page that asks only for a Gmail: a 6-digit code is emailed to it, and the code
+and a new password are typed in the boxes that then appear below. No account type or
+username is asked; the function finds the account from the Gmail (`send-reset` without
+`role`):
 
-- **Applicants:** to the email on their profile. That email is optional, because many
-  blind applicants have none; an applicant without one asks Blind Jobs for help.
-- **Employers:** to their Gmail.
+- an account that signs in with it (employers, applicants made with Google or from before
+  usernames), or else
+- an applicant who has it on their profile, once confirmed with a code. That email is
+  optional, because many blind applicants have none; an applicant without one asks Blind
+  Jobs for help.
 
-The person types the address themselves, and the page answers the same whether or not it
+`reset-password` answers the account's type and what it signs in with (username or
+email), which Sign in then fills in. The page answers the same whether or not the Gmail
 matched, so it never reveals whether an account exists. The code works for 10 minutes and
 5 tries; one a minute. Key used: `reset_code:<userId>` (an HMAC, never the code).
 

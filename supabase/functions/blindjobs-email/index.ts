@@ -20,10 +20,12 @@
 //   welcome      { userId }       emails "your account is ready", once per account
 //                (both go only to the account's own address: an employer's Gmail, or an
 //                applicant's Gmail once they confirmed it with a code)
-//   send-reset   { role, login, channel: 'sms' | 'email', contact }
+//   send-reset   { role?, login, channel: 'sms' | 'email', contact }
 //                texts or emails a password-reset code, if `contact` is the mobile
-//                number or email saved on the account `login` (username or email)
-//   reset-password { role, login, code, password }  checks the code, sets the new password
+//                number or email saved on the account `login` (username or email);
+//                without `role`, `login` is the email and finds the account by itself
+//   reset-password { role?, login, code, password }  checks the code, sets the new
+//                password; answers { role, login } of the account, for signing in
 //   google-sign-in { credential }  checks Google's ID token; answers { user } for the
 //                account that uses that Gmail, or { newAccount } when none does yet
 import nodemailer from 'npm:nodemailer@6.9.16'
@@ -243,14 +245,38 @@ async function hashPassword(password: string) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-/** The account a reset is asked for, or null. `login` is an applicant's username or an email address. */
+/**
+ * The account using this email: one that signs in with it, or else an applicant who
+ * has it on their profile (only once confirmed, with `confirmedOnly`).
+ */
+async function accountByEmail(email: string, confirmedOnly: boolean) {
+  let ref = await get(`user_by_email:${email}`)
+  if (!ref) {
+    let query = db.from(TABLE).select('key').like('key', 'applicant_profile:%').eq('value->>email', email)
+    if (confirmedOnly) query = query.eq('value->>emailVerified', 'true')
+    const { data, error } = await query.limit(1)
+    if (error) throw new Error(error.message)
+    if (data?.[0]) ref = { userId: String(data[0].key).slice('applicant_profile:'.length) }
+  }
+  return ref ? await get(`user:${ref.userId}`) : null
+}
+
+/**
+ * The account a reset is asked for, or null. `login` is an applicant's username or an
+ * email address. Without `role` (the Forgot password page asks only for the Gmail), the
+ * account is found by that address alone, whichever kind it is.
+ */
 async function findAccount(role: unknown, login: unknown) {
   const typed = String(login || '').trim().toLowerCase()
-  if (!typed || (role !== 'applicant' && role !== 'employer')) return null
-  const ref = (!typed.includes('@') && await get(`user_by_username:${typed}`)) || await get(`user_by_email:${typed}`)
-  const user = ref && await get(`user:${ref.userId}`)
-  if (!user || user.role !== role) return null
-  const profile = role === 'applicant' ? await get(`applicant_profile:${user.id}`) : null
+  if (!typed || (role !== undefined && role !== 'applicant' && role !== 'employer')) return null
+  const user = role === undefined
+    ? (typed.includes('@') ? await accountByEmail(typed, true) : null)
+    : await (async () => {
+      const ref = (!typed.includes('@') && await get(`user_by_username:${typed}`)) || await get(`user_by_email:${typed}`)
+      return ref && await get(`user:${ref.userId}`)
+    })()
+  if (!user || (role !== undefined && user.role !== role)) return null
+  const profile = user.role === 'applicant' ? await get(`applicant_profile:${user.id}`) : null
   return { user, profile }
 }
 
@@ -319,6 +345,8 @@ async function resetPassword(body: Record<string, unknown>) {
   }
   await drop(key)
   await put(`user:${account.user.id}`, { ...account.user, password: await hashPassword(password), passwordChangedAt: new Date().toISOString() })
+  // What the sign-in page fills in next: the right account type, and what they sign in with
+  return { role: account.user.role, login: account.user.email || account.user.username }
 }
 
 // ── Sign in with Google ───────────────────────────────────────────────────────
@@ -343,13 +371,7 @@ async function googleSignIn(credential: unknown, req: Request) {
 
   // An account registered with this address (employers, and applicants from before
   // usernames), or else an applicant who added it to their profile
-  let ref = await get(`user_by_email:${email}`)
-  if (!ref) {
-    const { data, error } = await db.from(TABLE).select('key').like('key', 'applicant_profile:%').eq('value->>email', email).limit(1)
-    if (error) throw new Error(error.message)
-    if (data?.[0]) ref = { userId: String(data[0].key).slice('applicant_profile:'.length) }
-  }
-  const user = ref && await get(`user:${ref.userId}`)
+  const user = await accountByEmail(email, false)
   // The person proved they own this address, so saying no account uses it reveals nothing
   if (!user) {
     // Blind Jobs accounts use Gmail only (the codes and alerts are sent to Gmail)
@@ -383,13 +405,13 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json()
     if (body.action === 'google-sign-in') return reply({ ok: true, ...await googleSignIn(body.credential, req) })
+    if (body.action === 'reset-password') return reply({ ok: true, ...await resetPassword(body) })
     switch (body.action) {
       case 'send-code': await sendCode(gmail(body.email)); break
       case 'verify-code': await verifyCode(gmail(body.email), body.code); break
       case 'login-alert': await loginAlert(body.userId, req); break
       case 'welcome': await welcome(body.userId); break
       case 'send-reset': await sendReset(body); break
-      case 'reset-password': await resetPassword(body); break
       default: throw new Refusal('Unknown action.')
     }
     return reply({ ok: true })
