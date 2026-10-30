@@ -33,10 +33,8 @@ blindss/
 │   │   │   │                   Register (applicant, employer)
 │   │   │   └── register/       Applicant registration, one file per step (account, work profile,
 │   │   │                       finish), plus the step list and the frame around them
-│   │   ├── applicant/          Dashboard (Home), Profile (resume), Assessments, Jobs
-│   │   │   ├── profile/        The read-only resume and the Gmail confirmation box
-│   │   │   └── assessments/
-│   │   │       └── health/     RAND-36 health survey: consent, question pages, results
+│   │   ├── applicant/          Dashboard (Home), Profile (resume), Jobs
+│   │   │   └── profile/        The read-only resume and the Gmail confirmation box
 │   │   │                       (the edit form is ProfileScreen.tsx)
 │   │   ├── employer/           Dashboard, Post a Job, Applicants board
 │   │   │   └── applicants/     What an employer reviews in the applicant dialog: job fit,
@@ -64,7 +62,7 @@ blindss/
 │   │   │   ├── auth.ts               Register and sign in
 │   │   │   ├── email.ts              Email codes (register, confirm a Gmail), password reset, sign-in alerts
 │   │   │   ├── profile.ts            Applicant profile
-│   │   │   ├── health.ts             Hands back, then deletes, survey answers saved before Oct 23
+│   │   │   ├── health.ts             Deletes health survey answers left by earlier versions
 │   │   │   ├── jobs.ts               Job posts
 │   │   │   ├── applications.ts       Applying, and application stages
 │   │   │   ├── notifications.ts      The bell
@@ -76,8 +74,6 @@ blindss/
 │   │   │   ├── job-fit.ts            The 0–100 job-fit score, its reasons, suggestions and ranking
 │   │   │   ├── skills.ts             Skills to search while typing, and recommended skills from job posts
 │   │   │   └── work-categories.ts    Kinds of work a job can be tagged with
-│   │   ├── assessment/
-│   │   │   └── rand36.ts             RAND-36 items, answer choices and RAND's scoring
 │   │   ├── job-search.ts       Job search in plain English or Filipino: filters + BM25 ranking
 │   │   ├── documents/
 │   │   │   ├── legal.ts              Privacy Notice and Terms text, their versions, and consent
@@ -186,18 +182,14 @@ After that:
   paused while the employer edits it; saving or cancelling puts its status back.
 - **Employer review.** The same score and reasons, and the accommodations the applicant asked
   for, with a message to start that conversation.
-- **Assessments page: the health survey (RAND-36).** Removed on 2026-10-24 and brought back
-  on 2026-10-30, as it was before: optional, for the applicant alone. It is never needed to
-  apply, and answering or skipping it changes nothing about applications or matching. **It
-  is not saved**: answers are scored in the browser and kept only in that tab; the
-  applicant can download a copy as a text file. It must stay that way. The database is
-  readable with the public key, so health answers must never be written to it; and showing
-  employers whether an applicant is "healthy enough to work" would be discrimination under
-  the Magna Carta for Persons with Disability (RA 7277, Sec. 32), so results must never
-  reach an employer or feed the job-fit score. Copies saved by versions before Oct 23
-  (`health_assessment:<userId>`) are shown once and deleted when the applicant next opens
-  the page (`takeOldHealthAssessment` in `src/lib/api/health.ts`). Item and answer wording
-  is RAND's and must not be reworded (`src/lib/assessment/rand36.ts`).
+- **The health survey (RAND-36) was removed on 2026-10-24.** Its purpose was to show
+  employers whether an applicant is healthy enough to work, which the Magna Carta for Persons
+  with Disability (RA 7277, Sec. 32) treats as discrimination, and health answers should not
+  be collected without a lawful need. Answers saved by earlier versions
+  (`health_assessment:<userId>`) are deleted when the applicant next opens the dashboard
+  (`deleteOldHealthAnswers` in `src/lib/api/health.ts`). To ask employers' real question,
+  "can this person work on-site, and what do they need?", ask the applicant job-related
+  questions instead (work setup and accommodations are already on the profile).
 
 The skills check (a 10-question test per kind of work) was removed on 2026-10-20. Its code
 is kept in `_removed/skills-check/`, with a README on how it was wired in.
@@ -298,7 +290,7 @@ Code is written in English with each piece of text wrapped in `t('…')` (`src/l
 English. To list text that still needs translating:
 `python scripts/i18n-keys.py src src/lib/i18n/fil.ts`.
 
-Not translated, on purpose: the RAND-36 questions (RAND's wording), the Privacy Notice and
+Not translated, on purpose: the Privacy Notice and
 Terms (legal text needs a lawyer's translation), the employer screens, and what people type
 (job posts, messages, skills). Saved values such as disability types are stored in English
 and only shown translated. The Filipino was written by Claude and should be checked by a

@@ -2,7 +2,7 @@ export type Role = 'applicant' | 'employer'
 
 export type Screen =
   | 'intro' | 'login' | 'register-applicant' | 'register-employer' | 'forgot-password'
-  | 'dashboard' | 'profile' | 'assessments' | 'jobs' | 'messages'
+  | 'dashboard' | 'profile' | 'jobs' | 'messages'
   | 'emp-dashboard' | 'emp-post-job' | 'emp-applicants' | 'emp-messages'
 
 // `email` is what the user signs in with: an email address, or an applicant's username
@@ -34,19 +34,6 @@ export interface ApplicantProfile {
   // What the applicant asks an employer to arrange (choices in resume.ts)
   accommodations?: string[]
   updatedAt?: string
-}
-
-// One go at the RAND-36 health survey. Kept only in the browser while the applicant
-// looks at it, never saved (see lib/api/health.ts).
-export interface HealthAssessment {
-  instrument: 'RAND-36 1.0'
-  /** Item number → position of the chosen answer, from 1; skipped items are absent. */
-  answers: Record<number, number>
-  scales: { id: string; score: number | null; answered: number; of: number }[]
-  healthChange: number | null
-  /** When the applicant ticked the consent box, and when they finished. */
-  consentAt: string
-  takenAt: string
 }
 
 export interface Applicant { applicantId: string; jobId: string; jobTitle: string; stage: string; appliedAt: string; profile: ApplicantProfile | null; job?: Job | null }

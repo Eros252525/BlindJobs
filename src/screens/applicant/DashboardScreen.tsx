@@ -29,6 +29,13 @@ export function DashboardScreen({ user, onNavigate, onOpenJob, onOpenProfileFiel
   // a notification just arrived: reload so the lists below match what it said
   const reload = useUpdateTick()
 
+  // Health survey answers left by earlier versions (the survey was removed): deleted
+  // quietly, along with any results the last version kept in this tab
+  useEffect(() => {
+    api.deleteOldHealthAnswers(user.id).catch(() => {})
+    try { sessionStorage.removeItem('bj-health-results') } catch { /* nothing kept */ }
+  }, [user.id])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {

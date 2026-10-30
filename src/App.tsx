@@ -18,7 +18,6 @@ import { RegisterApplicantScreen } from './screens/auth/RegisterApplicantScreen'
 import { RegisterEmployerScreen } from './screens/auth/RegisterEmployerScreen'
 import { DashboardScreen } from './screens/applicant/DashboardScreen'
 import { ProfileScreen } from './screens/applicant/ProfileScreen'
-import { AssessmentsScreen, clearHealthResults } from './screens/applicant/AssessmentsScreen'
 import { JobsScreen } from './screens/applicant/JobsScreen'
 import { MessagesScreen } from './screens/shared/MessagesScreen'
 import { EmpDashboardScreen } from './screens/employer/EmpDashboardScreen'
@@ -89,8 +88,7 @@ export default function App() {
     setScreen(homeFor(u), 'replace')
   }
 
-  // Health survey results live only in this tab; signing out clears them for the next person
-  const handleLogout = () => { clearHealthResults(); setUser(null); setScreen('login') }
+  const handleLogout = () => { setUser(null); setScreen('login') }
 
   // Just registered, or just reset the password: the sign-in page fills in the sign-in
   // name and says why. In place of the page before, so Back does not return to it.
@@ -140,7 +138,6 @@ export default function App() {
         <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 focus:outline-none">
         {screen === 'dashboard' && user && <DashboardScreen user={user} onNavigate={navigate} onOpenJob={openJob} onOpenProfileField={openProfileField} />}
         {screen === 'profile' && user && <ProfileScreen user={user} focusField={fieldFocus} onNameChange={(name) => setUser(u => u && { ...u, name })} />}
-        {screen === 'assessments' && user && <AssessmentsScreen user={user} />}
         {screen === 'jobs' && user && <JobsScreen user={user} initialJobId={jobFocus} onGoToProfile={() => navigate('profile')} onGoToProfileField={openProfileField} />}
         {screen === 'messages' && user && <MessagesScreen user={user} onOpenJob={openJob} onFindJobs={() => navigate('jobs')} />}
 

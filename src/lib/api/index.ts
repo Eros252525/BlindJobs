@@ -4,18 +4,18 @@
 import { emailAvailable, usernameAvailable, register, login } from './auth'
 import { sendEmailCode, verifyEmailCode, sendResetCode, resetPassword, clearEmailVerified, sendWelcome, signInWithGoogle } from './email'
 import { getProfile, updateProfile } from './profile'
-import { takeOldHealthAssessment } from './health'
+import { deleteOldHealthAnswers } from './health'
 import { getJobs, postJob, updateJob, getEmployerJobs, updateJobStatus, deleteJob } from './jobs'
 import { applyToJob, getAppliedJobs, getMyApplications, getApplicationStage, getEmployerApplicants, updateStage } from './applications'
 import { getNotifications, markNotificationsRead } from './notifications'
 import { getConversations, createConversation, getMessages, getMessagesFor, deleteMessageForEveryone, deleteMessagesForMe, deleteConversationsForMe, sendMessage, getUnreadMessages, getInbox, getDeletedConversationJobIds, setConversationsPinned, markAllConversationsRead, markConversationRead } from './messages'
 
-export { emailAvailable, usernameAvailable, register, login, sendEmailCode, verifyEmailCode, sendResetCode, resetPassword, clearEmailVerified, sendWelcome, signInWithGoogle, getProfile, updateProfile, takeOldHealthAssessment, getJobs, postJob, updateJob, getEmployerJobs, updateJobStatus, deleteJob, applyToJob, getAppliedJobs, getMyApplications, getApplicationStage, getEmployerApplicants, updateStage, getNotifications, markNotificationsRead, getConversations, createConversation, getMessages, getMessagesFor, deleteMessageForEveryone, deleteMessagesForMe, deleteConversationsForMe, sendMessage, getUnreadMessages, getInbox, getDeletedConversationJobIds, setConversationsPinned, markAllConversationsRead, markConversationRead }
+export { emailAvailable, usernameAvailable, register, login, sendEmailCode, verifyEmailCode, sendResetCode, resetPassword, clearEmailVerified, sendWelcome, signInWithGoogle, getProfile, updateProfile, deleteOldHealthAnswers, getJobs, postJob, updateJob, getEmployerJobs, updateJobStatus, deleteJob, applyToJob, getAppliedJobs, getMyApplications, getApplicationStage, getEmployerApplicants, updateStage, getNotifications, markNotificationsRead, getConversations, createConversation, getMessages, getMessagesFor, deleteMessageForEveryone, deleteMessagesForMe, deleteConversationsForMe, sendMessage, getUnreadMessages, getInbox, getDeletedConversationJobIds, setConversationsPinned, markAllConversationsRead, markConversationRead }
 
 export const api = {
   register, login, signInWithGoogle, emailAvailable, usernameAvailable, sendEmailCode, verifyEmailCode, sendResetCode, resetPassword, clearEmailVerified, sendWelcome,
   getProfile, updateProfile,
-  takeOldHealthAssessment,
+  deleteOldHealthAnswers,
   getJobs, postJob, updateJob, getEmployerJobs, updateJobStatus, deleteJob,
   applyToJob, getAppliedJobs, getApplicationStage, getEmployerApplicants, updateStage,
   getConversations, createConversation, getMessages, sendMessage,

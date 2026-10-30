@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import * as sr from '@/lib/a11y/screen-reader'
 
-// For screens that change step without changing screen (a survey page, the next
-// question, a registration step): moves focus to the new step's heading and has the built-in reader
+// For screens that change step without changing screen (a registration step, a
+// password-reset step): moves focus to the new step's heading and has the built-in reader
 // say `spoken`. Without it, focus stays on a button that no longer exists and a
 // blind user is left with no sign that anything changed.
 // Put the returned ref on the heading, with tabIndex={-1}.
