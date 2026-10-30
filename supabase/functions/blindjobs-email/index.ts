@@ -25,7 +25,7 @@
 //                number or email saved on the account `login` (username or email)
 //   reset-password { role, login, code, password }  checks the code, sets the new password
 //   google-sign-in { credential }  checks Google's ID token; answers { user } for the
-//                account that uses that Gmail
+//                account that uses that Gmail, or { newAccount } when none does yet
 import nodemailer from 'npm:nodemailer@6.9.16'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -324,8 +324,9 @@ async function resetPassword(body: Record<string, unknown>) {
 // ── Sign in with Google ───────────────────────────────────────────────────────
 // Google's button gives the browser an ID token saying which Gmail the person proved
 // they own. Google itself checks the token here (signature, expiry); then it must be
-// meant for Blind Jobs (aud) and the address confirmed. Only existing accounts sign
-// in this way: a new one still registers, so consent and the profile are asked.
+// meant for Blind Jobs (aud) and the address confirmed. With no account yet, the Gmail
+// is marked proved, as a typed-back code would, and the person goes on to register
+// without a code or a password; consent and the profile are still asked there.
 
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') || ''
 
@@ -350,7 +351,12 @@ async function googleSignIn(credential: unknown, req: Request) {
   }
   const user = ref && await get(`user:${ref.userId}`)
   // The person proved they own this address, so saying no account uses it reveals nothing
-  if (!user) throw new Refusal(`No Blind Jobs account uses ${email}. Sign in with your username and password, or create an account first.`, 404)
+  if (!user) {
+    // Blind Jobs accounts use Gmail only (the codes and alerts are sent to Gmail)
+    if (!/@gmail\.com$/.test(email)) throw new Refusal(`No Blind Jobs account uses ${email}, and new accounts need a Gmail address. Choose a Gmail account in Google, or create an account with a username.`, 404)
+    await put(`email_verified:${email}`, { verifiedAt: new Date().toISOString(), by: 'google' })
+    return { newAccount: { email, firstName: String(claims.given_name || ''), lastName: String(claims.family_name || '') } }
+  }
 
   const signIn: string = user.email || user.username
   let name = signIn
@@ -366,7 +372,7 @@ async function googleSignIn(credential: unknown, req: Request) {
   }
   // As with a password sign-in; never stops the sign-in
   await loginAlert(user.id, req).catch(e => console.error('Sign-in alert not sent:', e))
-  return { id: user.id, role: user.role, email: signIn, name }
+  return { user: { id: user.id, role: user.role, email: signIn, name } }
 }
 
 // ── entry ─────────────────────────────────────────────────────────────────────
@@ -376,7 +382,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply({ error: 'Use POST.' }, 405)
   try {
     const body = await req.json()
-    if (body.action === 'google-sign-in') return reply({ ok: true, user: await googleSignIn(body.credential, req) })
+    if (body.action === 'google-sign-in') return reply({ ok: true, ...await googleSignIn(body.credential, req) })
     switch (body.action) {
       case 'send-code': await sendCode(gmail(body.email)); break
       case 'verify-code': await verifyCode(gmail(body.email), body.code); break

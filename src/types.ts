@@ -8,6 +8,10 @@ export type Screen =
 // `email` is what the user signs in with: an email address, or an applicant's username
 export interface User { id: string; role: Role; email: string; name: string }
 
+// Who Google's button proved, when no account uses their Gmail yet: registration
+// starts with these filled in, and `role` is the account type chosen on Sign in
+export interface GoogleSignUp { email: string; firstName: string; lastName: string; role: Role }
+
 export interface Job { id: string; employerId: string; companyName: string; jobTitle: string; skills: string; location: string; salary: string; jobType: string; experienceLevel: string; description: string; createdAt: string; status?: string; vacancies?: string; disabilityCategories?: string[]; listed?: boolean; deleted?: boolean
   // The kind of work, a WorkCategoryId
   workCategory?: string }

@@ -130,7 +130,7 @@ export const FIL: Record<string, string> = {
   "Employer": "Employer",
   "Employer Details": "Detalye ng employer",
   "Employer dashboard.": "Dashboard ng employer.",
-  "Employers call you on it. If you forget your password, we text a code to it.": "Dito ka tatawagan ng mga employer. Kapag nakalimutan mo ang password, dito namin ite-text ang code.",
+  "Employers call you on it.": "Dito ka tatawagan ng mga employer.",
   "Employers see this photo when you apply.": "Makikita ng mga employer ang larawang ito kapag nag-apply ka.",
   "Employers see this resume when you apply for a job.": "Makikita ng mga employer ang resume na ito kapag nag-apply ka sa trabaho.",
   "Employers see your profile when you apply, so these are needed first.": "Nakikita ng mga employer ang iyong profile kapag nag-apply ka, kaya kailangan muna ang mga ito.",
@@ -582,4 +582,13 @@ export const FIL: Record<string, string> = {
   "Your work that was already saved is safe. Reload the page to try again. If it keeps happening, go back to Home.": "Ligtas ang mga na-save mo na. I-reload ang page para subukan ulit. Kung patuloy itong mangyari, bumalik sa Home.",
   "Reload the page": "I-reload ang page",
   "Go to Home": "Pumunta sa Home",
+
+  // Creating an account with Sign in with Google
+  "No account yet? Google confirms your Gmail and you go on to create an applicant account, with no password to make.": "Wala ka pang account? Kukumpirmahin ng Google ang iyong Gmail at gagawa ka ng account bilang aplikante, nang walang password na gagawin.",
+  "No account yet? Google confirms your Gmail and you go on to create an employer account, with no password to make.": "Wala ka pang account? Kukumpirmahin ng Google ang iyong Gmail at gagawa ka ng account bilang employer, nang walang password na gagawin.",
+  "Google confirmed {email}.": "Nakumpirma ng Google ang {email}.",
+  "Step 1 of {n}. No account uses it yet, so you are creating one. You will sign in with Google: there is no username or password to make. After this come your skills and work preferences.": "Hakbang 1 sa {n}. Wala pang account na gumagamit nito, kaya gagawa ka ng isa. Google ang gagamitin mo sa pag-sign in: walang username o password na gagawin. Pagkatapos nito, ang iyong mga kasanayan at kagustuhan sa trabaho.",
+  "Confirmed by Google. You sign in with it, and codes for a forgotten password go to it.": "Nakumpirma ng Google. Ito ang gamit mo sa pag-sign in, at dito ipinapadala ang mga code para sa nakalimutang password.",
+  "This is what will be saved. Then you are signed in; next time, use Sign in with Google. You can change your profile after that.": "Ito ang ise-save. Pagkatapos, naka-sign in ka na; sa susunod, gamitin ang Mag-sign in gamit ang Google. Puwede mong baguhin ang iyong profile pagkatapos.",
+  "Sign in with": "Pag-sign in gamit ang",
 }

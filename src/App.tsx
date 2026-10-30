@@ -6,7 +6,7 @@ import { loadSession, saveSession } from './lib/session'
 import { allowedScreen, homeFor, pathFor, screenAt } from './lib/routes'
 import { hasChosenLang, t, useLang } from './lib/i18n'
 import { LanguageScreen } from './screens/auth/LanguageScreen'
-import type { Screen, User } from './types'
+import type { GoogleSignUp, Screen, User } from './types'
 import { ToastContainer } from './components/toast/ToastContainer'
 import { AccessibilityBar } from './components/a11y/AccessibilityBar'
 import { LegalDialogHost } from './components/legal/LegalDialog'
@@ -96,6 +96,12 @@ export default function App() {
   const handleRegistered = (username: string) => { setWelcome({ kind: 'registered', role: 'applicant', login: username }); setScreen('login', 'replace') }
   const handlePasswordReset = (login: string, role: SignInWelcome['role']) => { setWelcome({ kind: 'reset', role, login }); setScreen('login', 'replace') }
 
+  // Google proved a Gmail no account uses yet: registration starts with it filled in.
+  // Only for the registration it led to; leaving it (or a reload) starts over without.
+  const [googleSignUp, setGoogleSignUp] = useState<GoogleSignUp | null>(null)
+  const startGoogleSignUp = (g: GoogleSignUp) => { setWelcome(null); setGoogleSignUp(g); setScreen(g.role === 'employer' ? 'register-employer' : 'register-applicant') }
+  const leaveRegistration = () => { setGoogleSignUp(null); setScreen('login') }
+
   // Job picked on a dashboard: preselected in Jobs (applicant) or used as the board
   // filter in Applicants (employer). Plain navigation clears it.
   const [jobFocus, setJobFocus] = useState<string | null>(null)
@@ -129,10 +135,12 @@ export default function App() {
       {!langChosen && !user && <LanguageScreen onChosen={() => setLangChosen(true)} />}
       {langChosen && screen === 'intro' && <IntroScreen onContinue={() => setScreen('login')} />}
       {langChosen && screen === 'login' && <LoginScreen key={welcome?.login ?? ''} onLogin={(u) => { setWelcome(null); handleLogin(u) }}
-        onNavigate={(s) => { setWelcome(null); setScreen(s) }} welcome={welcome} />}
+        onNavigate={(s) => { setWelcome(null); setGoogleSignUp(null); setScreen(s) }} onGoogleSignUp={startGoogleSignUp} welcome={welcome} />}
       {langChosen && screen === 'forgot-password' && <ForgotPasswordScreen onDone={handlePasswordReset} onBack={() => setScreen('login')} />}
-      {langChosen && screen === 'register-applicant' && <RegisterApplicantScreen onRegistered={handleRegistered} onBack={() => setScreen('login')} />}
-      {langChosen && screen === 'register-employer' && <RegisterEmployerScreen onLogin={handleLogin} onBack={() => setScreen('login')} />}
+      {langChosen && screen === 'register-applicant' && <RegisterApplicantScreen key={googleSignUp?.email ?? ''} google={googleSignUp?.role === 'applicant' ? googleSignUp : null}
+        onRegistered={handleRegistered} onLogin={(u) => { setGoogleSignUp(null); handleLogin(u) }} onBack={leaveRegistration} />}
+      {langChosen && screen === 'register-employer' && <RegisterEmployerScreen key={googleSignUp?.email ?? ''} google={googleSignUp?.role === 'employer' ? googleSignUp : null}
+        onLogin={(u) => { setGoogleSignUp(null); handleLogin(u) }} onBack={leaveRegistration} />}
 
       {isLoggedIn && (
         <main id="main-content" tabIndex={-1} className="portal-backdrop flex-1 flex flex-col min-h-0 focus:outline-none">

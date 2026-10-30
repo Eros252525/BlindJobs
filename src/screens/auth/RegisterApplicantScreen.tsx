@@ -4,7 +4,7 @@ import { NO_CONSENT } from '@/lib/documents/legal'
 import { gmailAddress } from '@/lib/gmail'
 import { t, useLang } from '@/lib/i18n'
 import { useStepFocus } from '@/hooks/useStepFocus'
-import type { User } from '@/types'
+import type { GoogleSignUp, User } from '@/types'
 import { AccountStep } from './register/AccountStep'
 import { FinishStep } from './register/FinishStep'
 import { StepFrame } from './register/StepFrame'
@@ -17,14 +17,20 @@ import { accountName, EMPTY_ACCOUNT_FORM, STEPS, STEP_NAMES, stepNumber, type Ac
  * This file holds what the applicant has entered so far and moves between the
  * steps; each step is its own file in ./register/.
  */
-export function RegisterApplicantScreen({ onRegistered, onBack }: {
+export function RegisterApplicantScreen({ google, onRegistered, onLogin, onBack }: {
+  /** Arrived from Sign in with Google: the Gmail is confirmed and is what they sign in with, so no username or password is asked. */
+  google?: GoogleSignUp | null
   /** The account exists: off to the sign-in page, where the applicant signs in with it. */
   onRegistered: (username: string) => void
+  /** The account made with Google exists: signed in to it at once, as there is no password to try. */
+  onLogin: (u: User) => void
   onBack: () => void
 }) {
   useLang()
   const [step, setStep] = useState<Step>('account')
-  const [form, setForm] = useState<AccountForm>(EMPTY_ACCOUNT_FORM)
+  const [form, setForm] = useState<AccountForm>(() => google
+    ? { ...EMPTY_ACCOUNT_FORM, firstName: google.firstName, lastName: google.lastName, email: google.email }
+    : EMPTY_ACCOUNT_FORM)
   const [consent, setConsent] = useState(NO_CONSENT)
   const [work, setWork] = useState<WorkProfile>(EMPTY_WORK_PROFILE)
   const [loading, setLoading] = useState(false)
@@ -66,7 +72,7 @@ export function RegisterApplicantScreen({ onRegistered, onBack }: {
       if (!created.current) {
         created.current = await api.register({
           role: 'applicant', firstName: form.firstName.trim(), middleName: form.middleName.trim(), lastName: form.lastName.trim(), mobile: form.mobile, optionalEmail: form.email,
-          username: form.username, password: form.password, consent,
+          ...(google ? { google: true } : { username: form.username, password: form.password }), consent,
           disabilityType: work.disabilityType,
           skills: work.skills,
         }) as User
@@ -77,8 +83,9 @@ export function RegisterApplicantScreen({ onRegistered, onBack }: {
         experience: work.jobTitle.trim() ? [{ title: work.jobTitle.trim(), company: work.company.trim(), period: '' }] : [],
       })
       // Not signed in here: the applicant signs in once with what they just chose,
-      // so they know it works before they need it
-      onRegistered(user.email)
+      // so they know it works before they need it. With Google there is nothing to try.
+      if (google) onLogin(user)
+      else onRegistered(user.email)
     } catch (e: any) {
       setError(created.current
         ? t('Your account was created, but some answers were not saved: {reason}. Choose Create my account to try again.', { reason: e.message })
@@ -87,7 +94,7 @@ export function RegisterApplicantScreen({ onRegistered, onBack }: {
   }
 
   if (step === 'account') {
-    return <AccountStep headingRef={headingRef} form={form} consent={consent}
+    return <AccountStep headingRef={headingRef} google={!!google} form={form} consent={consent}
       onForm={setForm} onConsent={setConsent} onContinue={() => go('profile')} onBack={onBack} />
   }
 
@@ -101,7 +108,7 @@ export function RegisterApplicantScreen({ onRegistered, onBack }: {
 
   return (
     <StepFrame step="finish" onPrev={previous}>
-      <FinishStep headingRef={headingRef} name={accountName(form)} mobile={form.mobile} email={form.email.trim() ? gmailAddress(form.email) : ''} username={form.username.trim().toLowerCase()} work={work}
+      <FinishStep headingRef={headingRef} google={!!google} name={accountName(form)} mobile={form.mobile} email={form.email.trim() ? gmailAddress(form.email) : ''} username={form.username.trim().toLowerCase()} work={work}
         loading={loading} error={error} onCreate={createAccount} />
     </StepFrame>
   )

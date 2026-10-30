@@ -3,7 +3,7 @@
 // alert, password reset, and checking a Sign in with Google.
 // The Gmail password and the codes stay on the server; the browser only asks.
 import { t } from '@/lib/i18n'
-import type { User } from '@/types'
+import type { GoogleSignUp, User } from '@/types'
 import { kvDelete, supabase } from './client'
 
 const FUNCTION = 'blindjobs-email'
@@ -72,9 +72,11 @@ export const resetPassword = (role: string, login: string, code: string, passwor
 /**
  * Signs in to the account that uses the Gmail Google's button proved, with the ID token
  * it gave. The server checks the token with Google; nothing is trusted from the browser.
+ * With no account yet, answers who Google proved instead, and the server marks that
+ * Gmail as confirmed so `register` accepts it without a code.
  */
-export async function signInWithGoogle(credential: string): Promise<User> {
+export async function signInWithGoogle(credential: string): Promise<{ user: User } | { newAccount: Omit<GoogleSignUp, 'role'> }> {
   const data = await call('google-sign-in', { credential },
     t('Could not reach Blind Jobs to finish signing in with Google. Check your internet connection and try again.'))
-  return data.user
+  return data.newAccount ? { newAccount: data.newAccount } : { user: data.user }
 }

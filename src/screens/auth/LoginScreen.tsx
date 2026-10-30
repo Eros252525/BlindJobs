@@ -9,7 +9,7 @@ import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { ErrorMsg } from '@/components/ui/ErrorMsg'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Spinner } from '@/components/ui/Spinner'
-import type { Role, Screen, User } from '@/types'
+import type { GoogleSignUp, Role, Screen, User } from '@/types'
 
 /** Why someone arrives at sign in with their details half filled in. */
 export interface SignInWelcome {
@@ -19,8 +19,10 @@ export interface SignInWelcome {
   login: string
 }
 
-export function LoginScreen({ onLogin, onNavigate, welcome }: {
+export function LoginScreen({ onLogin, onNavigate, onGoogleSignUp, welcome }: {
   onLogin: (u: User) => void; onNavigate: (s: Screen) => void
+  /** Google proved a Gmail no account uses yet: on to registration, as the account type chosen here. */
+  onGoogleSignUp: (g: GoogleSignUp) => void
   /** Set right after registering or resetting the password: the sign-in name is filled in and the page says why. */
   welcome?: SignInWelcome | null
 }) {
@@ -59,13 +61,16 @@ export function LoginScreen({ onLogin, onNavigate, welcome }: {
     finally { setLoading(false) }
   }
 
-  // Signs in to whichever account uses the Gmail Google proved, applicant or employer
+  // Signs in to whichever account uses the Gmail Google proved, applicant or employer;
+  // with none yet, registration starts with that Gmail already confirmed
   const [googleBusy, setGoogleBusy] = useState(false)
   const [googleError, setGoogleError] = useState('')
   const handleGoogle = async (credential: string) => {
     setGoogleError(''); setError(''); setInvalid(new Set()); setGoogleBusy(true)
     try {
-      onLogin(await api.signInWithGoogle(credential))
+      const result = await api.signInWithGoogle(credential)
+      if ('user' in result) onLogin(result.user)
+      else onGoogleSignUp({ ...result.newAccount, role })
     } catch (e: any) {
       setGoogleError(e.message)
     }
@@ -131,7 +136,12 @@ export function LoginScreen({ onLogin, onNavigate, welcome }: {
             <span aria-hidden="true" className="h-px flex-1 bg-gray-300" />{t('or')}<span aria-hidden="true" className="h-px flex-1 bg-gray-300" />
           </p>
           <GoogleSignInButton onCredential={handleGoogle} />
-          <p className="mt-2 text-sm text-gray-700 text-center">{t('For an account that uses your Gmail, applicant or employer.')}</p>
+          <p className="mt-2 text-sm text-gray-700 text-center">
+            {t('For an account that uses your Gmail, applicant or employer.')}{' '}
+            {role === 'employer'
+              ? t('No account yet? Google confirms your Gmail and you go on to create an employer account, with no password to make.')
+              : t('No account yet? Google confirms your Gmail and you go on to create an applicant account, with no password to make.')}
+          </p>
           <p role="status" className="mt-2 text-center font-semibold text-gray-900">{googleBusy ? t('Signing in with Google…') : ''}</p>
           <ErrorMsg id="google-error" msg={googleError} />
         </section>

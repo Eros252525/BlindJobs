@@ -250,9 +250,19 @@ signs in to the account that uses the Gmail the person picks, applicant or emplo
 Google proves the address; the email function's `google-sign-in` action checks Google's
 token (that it is real, meant for Blind Jobs, and the address confirmed) and finds the
 account: one registered with that Gmail, or an applicant who added it to their profile
-(which then counts as confirmed). It does not create accounts: someone new still
-registers, so consent and the profile are asked. One Tap, the prompt that pops up by
-itself, is off, because it would interrupt a screen reader.
+(which then counts as confirmed). One Tap, the prompt that pops up by itself, is off,
+because it would interrupt a screen reader.
+
+**No account yet:** the function marks the Gmail proved (`email_verified:<email>`, as a
+typed-back code does) and answers `{ newAccount: { email, firstName, lastName } }`. The
+person goes on to registration for the account type chosen on Sign in, with Google's name
+and Gmail filled in, and no username, password or emailed code to make. Consent and the
+profile are still asked, as the Data Privacy Act needs. `register({ google: true })` makes
+the account with that Gmail as what they sign in with and `password: null`, so a password
+never signs in to it; it is signed in to at once. A password can be added later with
+Forgot password, which emails the code to that Gmail. Only Gmail addresses can make an
+account this way. After changing this, redeploy the function
+(`supabase functions deploy blindjobs-email`).
 
 Setup: in Google Cloud, APIs & Services → Credentials, make an OAuth client ID of type
 "Web application" with the site's addresses (e.g. `https://blind-jobs.vercel.app`,

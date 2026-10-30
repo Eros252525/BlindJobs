@@ -27,8 +27,8 @@ export interface LegalDoc { id: LegalDocId; title: string; version: string; effe
 const PRIVACY: LegalDoc = {
   id: 'privacy',
   title: 'Privacy Notice',
-  version: '2.0',
-  effective: 'October 24, 2026',
+  version: '2.2',
+  effective: 'October 30, 2026',
   summary: 'This notice explains what personal data Blind Jobs collects, why, who can see it, and your rights under the Data Privacy Act of 2012 (Republic Act No. 10173).',
   sections: [
     {
@@ -40,10 +40,11 @@ const PRIVACY: LegalDoc = {
     },
     {
       heading: 'What we collect',
-      body: ['We collect only what you type into Blind Jobs.'],
+      body: ['We collect only what you type into Blind Jobs, and what Google tells us if you use Sign in with Google.'],
       items: [
-        'Applicants: your name, the username you sign in with (no email is needed), mobile number, gender if you give it, type of visual disability, skills, city or province, education, work experience, assistive technology, preferred work setup, the workplace accommodations you would ask for, languages, your "About me" text, and a profile photo if you add one (employers see it when you apply).',
+        'Applicants: your name, the username you sign in with (no email is needed) or your Gmail if you signed up with Google, mobile number, gender if you give it, type of visual disability, skills, city or province, education, work experience, assistive technology, preferred work setup, the workplace accommodations you would ask for, languages, your "About me" text, and a profile photo if you add one (employers see it when you apply).',
         'Employers: your company name, your Gmail address, and the jobs you post.',
+        'If you use Sign in with Google: Google tells us your Gmail address, that it is yours, and your first and last name, which fill in the registration form for you to check. We never see your Google password. An account made this way has no Blind Jobs password until you set one with "Forgot your password?".',
         'Everyone: your password, the messages you send, the jobs you apply to, and the stage of each application.',
         'Employers: when you register, a 6-digit code is emailed to your Gmail address to confirm it is yours; only a scrambled form of the code is stored, and it is deleted once used or after 10 minutes. Each time an account that has an email address is signed in to, we email that address the time and the kind of device and browser used, so you can tell if someone else signed in.',
       ],

@@ -67,25 +67,48 @@ async function findUser(input: string): Promise<{ entry: any } | null> {
 // The one answer to every failed sign-in, so it never tells whether an account exists
 const BAD_SIGN_IN = () => t('Email, username or password is incorrect.')
 
+// A Gmail an account is made with: free, and proved by the email function, through a
+// typed-back code or Sign in with Google (it marks the address either way)
+async function provedGmail(input: string): Promise<string> {
+  if (!input?.trim()) throw new Error('Gmail address is required')
+  const problem = gmailProblem(input)
+  if (problem) throw new Error(problem)
+  const email = gmailAddress(input)
+  if (await findUserByEmail(email)) throw new Error('Email already registered')
+  if (!(await kvGet(`email_verified:${email}`))) throw new Error('Please confirm your Gmail address first, with the code we emailed to it.')
+  return email
+}
+
+/**
+ * Makes an account. With `google: true` it is made with the Gmail Google proved
+ * (`optionalEmail` for applicants, `emailUsername` for employers) and no password:
+ * the person signs in with Google, and can set a password later with Forgot password.
+ */
 export async function register(body: Record<string, any>) {
-  const { role, username, emailUsername, optionalEmail, password, firstName, lastName, middleName, suffix, mobile, gender, disabilityType, skills, companyName, consent } = body
-  if (!password) throw new Error(t('Please fill in: {fields}.', { fields: t('Password') }))
-  const weak = passwordProblem(password)
-  if (weak) throw new Error(weak)
+  const { role, username, emailUsername, optionalEmail, password, firstName, lastName, middleName, suffix, mobile, gender, disabilityType, skills, companyName, consent, google } = body
+  if (!google) {
+    if (!password) throw new Error(t('Please fill in: {fields}.', { fields: t('Password') }))
+    const weak = passwordProblem(password)
+    if (weak) throw new Error(weak)
+  }
   // No account without consent, whatever the form did (Data Privacy Act, RA 10173)
   if (!consent?.privacy || !consent?.terms) throw new Error('You must agree to the Privacy Notice and the Terms and Conditions')
   const id = crypto.randomUUID()
-  const hashed = await hashPassword(password)
+  const hashed = google ? null : await hashPassword(password)
   const createdAt = new Date().toISOString()
 
-  // Applicants: a username, no email (many blind applicants have none)
+  // Applicants: a username, no email (many blind applicants have none);
+  // with Google, their Gmail in place of the username
   if (role === 'applicant') {
-    if (!username?.trim()) throw new Error('Username is required')
-    // Checked here as well as in the form, so no way of registering gets round it
-    const problem = usernameProblem(username)
-    if (problem) throw new Error(problem)
-    const name = normalizeUsername(username)
-    if (!(await usernameAvailable(name))) throw new Error('That username is taken. Choose another one.')
+    let name = ''
+    if (!google) {
+      if (!username?.trim()) throw new Error('Username is required')
+      // Checked here as well as in the form, so no way of registering gets round it
+      const problem = usernameProblem(username)
+      if (problem) throw new Error(problem)
+      name = normalizeUsername(username)
+      if (!(await usernameAvailable(name))) throw new Error('That username is taken. Choose another one.')
+    }
     if (!firstName?.trim() || !lastName?.trim()) throw new Error('First name and last name are required')
     const badMobile = mobileProblem(mobile)
     if (badMobile) throw new Error(badMobile)
@@ -96,26 +119,29 @@ export async function register(body: Record<string, any>) {
     const contactEmail = optionalEmail?.trim() ? gmailAddress(optionalEmail) : ''
     const tooLong = nameProblem('First name', firstName) || nameProblem('Middle name', middleName) || nameProblem('Last name', lastName)
     if (tooLong) throw new Error(tooLong)
+    const googleEmail = google ? await provedGmail(optionalEmail) : ''
     // `consent` is the record of what was agreed to: document versions and the time
-    await kvSet(`user:${id}`, { id, role, username: name, email: '', password: hashed, createdAt, consent: consentRecord() })
-    await kvSet(`user_by_username:${name}`, { userId: id })
+    if (google) {
+      // Signs in with the Gmail, like applicants from before usernames
+      await kvSet(`user:${id}`, { id, role, email: googleEmail, password: hashed, createdAt, consent: consentRecord() })
+      await kvSet(`user_by_email:${googleEmail}`, { userId: id })
+      await kvDelete(`email_verified:${googleEmail}`)
+    } else {
+      await kvSet(`user:${id}`, { id, role, username: name, email: '', password: hashed, createdAt, consent: consentRecord() })
+      await kvSet(`user_by_username:${name}`, { userId: id })
+    }
     await kvSet(`applicant_profile:${id}`, {
       userId: id, username: name, firstName: firstName.trim(), lastName: lastName.trim(),
-      middleName: (middleName || '').trim(), suffix: suffix || '', email: contactEmail, emailVerified: false,
+      middleName: (middleName || '').trim(), suffix: suffix || '', email: google ? googleEmail : contactEmail, emailVerified: !!google,
       mobile: phMobile(mobile) ?? '', gender: gender || '', disabilityType: disabilityType || '',
       skills: skills || [], photoUrl: null,
     })
-    return { id, role, email: name, name: `${firstName.trim()} ${lastName.trim()}` }
+    if (google) sendWelcome(id)
+    return { id, role, email: google ? googleEmail : name, name: `${firstName.trim()} ${lastName.trim()}` }
   }
 
-  // Employers: a Gmail address, proved real with an emailed code
-  if (!emailUsername?.trim()) throw new Error('Gmail address is required')
-  const problem = gmailProblem(emailUsername)
-  if (problem) throw new Error(problem)
-  const email = gmailAddress(emailUsername)
-  if (await findUserByEmail(email)) throw new Error('Email already registered')
-  // Set by the email function once the code sent to this address was typed back
-  if (!(await kvGet(`email_verified:${email}`))) throw new Error('Please confirm your Gmail address first, with the code we emailed to it.')
+  // Employers: a Gmail address, proved real with an emailed code or by Google
+  const email = await provedGmail(emailUsername)
   await kvSet(`user:${id}`, { id, role, email, password: hashed, createdAt, consent: consentRecord() })
   await kvSet(`user_by_email:${email}`, { userId: id })
   await kvDelete(`email_verified:${email}`)
